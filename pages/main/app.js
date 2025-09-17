@@ -50,7 +50,7 @@ class MainPage {
                 headers
             });
 
-            if (!response.ok) {
+            if (!response.ok && response.status !== 201) {
                 throw new Error(`HTTP ${response.status}`);
             }
 
@@ -114,7 +114,7 @@ ${JSON.stringify(this.user.user_data, null, 2)}
                 body: JSON.stringify(updateData)
             });
 
-            if (!response.ok) {
+            if (!response.ok && response.status !== 201) {
                 throw new Error(`HTTP ${response.status}`);
             }
 

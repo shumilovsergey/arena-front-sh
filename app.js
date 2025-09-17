@@ -134,7 +134,7 @@ class App {
                 headers: window.tgApp.getAuthHeaders()
             });
 
-            if (!response.ok) {
+            if (!response.ok && response.status !== 201) {
                 throw new Error(`HTTP ${response.status}`);
             }
 
