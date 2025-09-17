@@ -8,16 +8,28 @@ class App {
         this.platform = 'unknown';
         this.currentUser = null;
         this.currentPage = null;
+        this.debugLogs = [];
 
         this.init();
     }
 
     init() {
+        // Create debug console first
+        this.createDebugConsole();
+
+        this.debugLog('🚀 App initialization started');
+
         this.detectDevice();
+        this.debugLog('📱 Device detected:', this.deviceType);
+
         this.detectPlatform();
+        this.debugLog('💻 Platform detected:', this.platform);
+
         this.applyDeviceStyles();
         this.updateDeviceInfo();
         this.setupEventListeners();
+
+        this.debugLog('⚙️ Basic setup complete');
 
         // Initialize app after device detection
         this.initializeApp();
@@ -111,14 +123,19 @@ class App {
 
     async initializeApp() {
         try {
+            this.debugLog('🔄 Initializing app...');
+
             // Wait for Telegram to be ready
             if (window.tgApp?.isInTelegram) {
+                this.debugLog('✅ Running in Telegram WebApp');
                 await this.authenticateUser();
             } else {
+                this.debugLog('❌ Not running in Telegram');
                 console.log('This app must be opened from Telegram');
                 this.showError('This app must be opened from Telegram');
             }
         } catch (error) {
+            this.debugLog('💥 App initialization failed:', error.message);
             console.error('App initialization error:', error);
             this.showError('Failed to initialize app');
         }
@@ -126,29 +143,53 @@ class App {
 
     async authenticateUser() {
         try {
-            const userData = window.tgApp.getUserData();
-            const initData = window.tgApp.validateInitData();
+            this.debugLog('🔐 Starting authentication...');
 
-            const response = await fetch(AppConfig.getApiUrl('/user'), {
+            // Check Telegram WebApp availability
+            this.debugLog('📱 Telegram WebApp available:', !!window.tgApp);
+            this.debugLog('📱 Is in Telegram:', window.tgApp?.isInTelegram);
+
+            const userData = window.tgApp.getUserData();
+            this.debugLog('👤 User data:', userData);
+
+            const initData = window.tgApp.validateInitData();
+            this.debugLog('🔑 Init data available:', !!initData);
+            this.debugLog('🔑 Init data length:', initData?.length || 0);
+
+            const headers = window.tgApp.getAuthHeaders();
+            this.debugLog('📤 Request headers:', headers);
+
+            const url = AppConfig.getApiUrl('/user');
+            this.debugLog('🌐 Request URL:', url);
+
+            const response = await fetch(url, {
                 method: 'GET',
-                headers: window.tgApp.getAuthHeaders()
+                headers: headers
             });
 
+            this.debugLog('📥 Response status:', response.status);
+            this.debugLog('📥 Response ok:', response.ok);
+
             if (!response.ok && response.status !== 201) {
-                throw new Error(`HTTP ${response.status}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const result = await response.json();
-            AppConfig.log('User authenticated:', result);
-            AppConfig.log('Response structure:', Object.keys(result));
+            this.debugLog('✅ Response data:', result);
+            this.debugLog('🔍 Response keys:', Object.keys(result));
 
             // Handle both response formats: {user: {...}} or direct user data
             this.currentUser = result.user || result;
+            this.debugLog('👤 Current user set:', !!this.currentUser);
+
             this.showAuthenticatedState();
+            this.debugLog('✅ Authentication successful!');
 
         } catch (error) {
+            this.debugLog('❌ Authentication error:', error.message);
+            this.debugLog('❌ Error stack:', error.stack);
             AppConfig.logError('Authentication failed:', error);
-            this.showError('Authentication failed');
+            this.showError(`Authentication failed: ${error.message}`);
         }
     }
 
@@ -291,6 +332,132 @@ class App {
     // Get current page
     getCurrentPage() {
         return this.currentPage;
+    }
+
+    // Debug console methods
+    createDebugConsole() {
+        const debugConsole = document.createElement('div');
+        debugConsole.id = 'debug-console';
+        debugConsole.innerHTML = `
+            <div class="debug-header">
+                <span>🐛 Debug Console</span>
+                <button onclick="window.app.toggleDebugConsole()" class="debug-toggle">Toggle</button>
+                <button onclick="window.app.clearDebugLogs()" class="debug-clear">Clear</button>
+            </div>
+            <div class="debug-content" id="debug-content"></div>
+        `;
+        document.body.appendChild(debugConsole);
+
+        // Add CSS for debug console
+        this.addDebugStyles();
+
+        this.debugLog('🚀 Debug console initialized');
+    }
+
+    debugLog(message, data = null) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = {
+            time: timestamp,
+            message: message,
+            data: data
+        };
+
+        this.debugLogs.push(logEntry);
+
+        // Also log to console
+        if (data !== null) {
+            console.log(`[${timestamp}] ${message}`, data);
+        } else {
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        this.updateDebugDisplay();
+    }
+
+    updateDebugDisplay() {
+        const debugContent = document.getElementById('debug-content');
+        if (!debugContent) return;
+
+        debugContent.innerHTML = this.debugLogs.slice(-20).map(log => {
+            const dataStr = log.data ? ` | ${JSON.stringify(log.data, null, 2)}` : '';
+            return `<div class="debug-entry">[${log.time}] ${log.message}${dataStr}</div>`;
+        }).join('');
+
+        // Auto scroll to bottom
+        debugContent.scrollTop = debugContent.scrollHeight;
+    }
+
+    toggleDebugConsole() {
+        const debugConsole = document.getElementById('debug-console');
+        if (debugConsole) {
+            debugConsole.classList.toggle('debug-minimized');
+        }
+    }
+
+    clearDebugLogs() {
+        this.debugLogs = [];
+        this.updateDebugDisplay();
+    }
+
+    addDebugStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            #debug-console {
+                position: fixed;
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                max-height: 300px;
+                background: rgba(0, 0, 0, 0.9);
+                color: #00ff00;
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                border: 1px solid #333;
+                border-radius: 8px;
+                z-index: 10000;
+                overflow: hidden;
+            }
+
+            .debug-header {
+                background: #333;
+                padding: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .debug-toggle, .debug-clear {
+                background: #555;
+                color: white;
+                border: none;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 10px;
+                margin-left: 4px;
+                cursor: pointer;
+            }
+
+            .debug-content {
+                padding: 8px;
+                max-height: 200px;
+                overflow-y: auto;
+            }
+
+            .debug-entry {
+                margin-bottom: 4px;
+                word-break: break-all;
+                white-space: pre-wrap;
+            }
+
+            .debug-minimized .debug-content {
+                display: none;
+            }
+
+            .debug-minimized {
+                max-height: 40px;
+            }
+        `;
+        document.head.appendChild(style);
     }
 }
 
