@@ -24,7 +24,7 @@ window.AppConfig = {
         version: '1.0.0',
 
         // Debug mode (enables console logging)
-        debug: window.location.hostname === 'localhost',
+        debug: true, // Temporarily enabled for debugging
 
         // Page system configuration
         defaultPage: 'welcome',

@@ -140,8 +140,10 @@ class App {
 
             const result = await response.json();
             AppConfig.log('User authenticated:', result);
+            AppConfig.log('Response structure:', Object.keys(result));
 
-            this.currentUser = result.user;
+            // Handle both response formats: {user: {...}} or direct user data
+            this.currentUser = result.user || result;
             this.showAuthenticatedState();
 
         } catch (error) {

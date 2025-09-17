@@ -55,7 +55,7 @@ class MainPage {
             }
 
             const result = await response.json();
-            this.user = result.user;
+            this.user = result.user || result;
             this.displayUserInfo();
 
         } catch (error) {
@@ -119,7 +119,7 @@ ${JSON.stringify(this.user.user_data, null, 2)}
             }
 
             const result = await response.json();
-            this.user = result.user;
+            this.user = result.user || result;
             this.displayUserInfo();
 
             if (window.tgApp?.isInTelegram) {
