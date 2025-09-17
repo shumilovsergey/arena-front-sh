@@ -8,7 +8,7 @@ window.AppConfig = {
     api: {
         baseUrl: window.location.hostname === 'localhost'
             ? 'http://localhost:5000/api'
-            : 'https://your-backend-domain.com/api', // ← Backend API URL with HTTPS and /api path
+            : 'https://arena-back.sh-development.ru/api', // ← Backend API URL with HTTPS and /api path
 
         // Request timeout in milliseconds
         timeout: 10000,
