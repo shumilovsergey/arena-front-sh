@@ -6,10 +6,8 @@ class App {
     constructor() {
         this.deviceType = 'unknown';
         this.platform = 'unknown';
-        // Configure API base URL for GitHub Pages deployment
-        this.apiBaseUrl = window.location.hostname === 'localhost'
-            ? 'http://localhost:5000/api'
-            : 'https://arena-back.sh-development.ru/api';  // Replace with your backend URL
+        this.currentUser = null;
+        this.currentPage = null;
 
         this.init();
     }
@@ -131,7 +129,7 @@ class App {
             const userData = window.tgApp.getUserData();
             const initData = window.tgApp.validateInitData();
 
-            const response = await fetch(`${this.apiBaseUrl}/user`, {
+            const response = await fetch(AppConfig.getApiUrl('/user'), {
                 method: 'GET',
                 headers: window.tgApp.getAuthHeaders()
             });
@@ -141,13 +139,13 @@ class App {
             }
 
             const result = await response.json();
-            console.log('User authenticated:', result);
+            AppConfig.log('User authenticated:', result);
 
             this.currentUser = result.user;
             this.showAuthenticatedState();
 
         } catch (error) {
-            console.error('Authentication failed:', error);
+            AppConfig.logError('Authentication failed:', error);
             this.showError('Authentication failed');
         }
     }
@@ -164,18 +162,64 @@ class App {
         }
     }
 
-    navigateToPage(pageName) {
-        // This is where you'd implement navigation to different pages
-        // For now, just show a placeholder
-        const appEl = document.getElementById('app');
-        if (appEl) {
-            appEl.innerHTML = `
-                <div class="page-container">
-                    <h1>Page: ${pageName}</h1>
-                    <p>This is where the ${pageName} page content would go.</p>
-                    <button onclick="location.reload()" class="primary-btn">Back to Home</button>
-                </div>
-            `;
+    async navigateToPage(pageName) {
+        try {
+            const pageConfig = AppConfig.pages.paths[pageName];
+            if (!pageConfig) {
+                throw new Error(`Page '${pageName}' not found`);
+            }
+
+            AppConfig.log(`Navigating to page: ${pageName}`);
+
+            // Load page HTML
+            const htmlPath = `${pageConfig}index.html`;
+            const htmlResponse = await fetch(htmlPath);
+            if (!htmlResponse.ok) throw new Error(`Failed to load page HTML: ${htmlResponse.status}`);
+
+            const htmlContent = await htmlResponse.text();
+
+            // Extract content from body (remove html/head tags)
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlContent, 'text/html');
+            const pageContent = doc.body.innerHTML;
+
+            // Update app container
+            const appEl = document.getElementById('app');
+            if (appEl) {
+                appEl.innerHTML = pageContent;
+            }
+
+            // Load page CSS
+            const cssPath = `${pageConfig}style.css`;
+            const existingPageCSS = document.getElementById('page-css');
+            if (existingPageCSS) {
+                existingPageCSS.remove();
+            }
+
+            const cssLink = document.createElement('link');
+            cssLink.id = 'page-css';
+            cssLink.rel = 'stylesheet';
+            cssLink.href = cssPath;
+            document.head.appendChild(cssLink);
+
+            // Load page JavaScript
+            const jsPath = `${pageConfig}app.js`;
+            const existingPageJS = document.getElementById('page-js');
+            if (existingPageJS) {
+                existingPageJS.remove();
+            }
+
+            const script = document.createElement('script');
+            script.id = 'page-js';
+            script.src = jsPath;
+            document.head.appendChild(script);
+
+            this.currentPage = pageName;
+            AppConfig.log(`Successfully loaded page: ${pageName}`);
+
+        } catch (error) {
+            AppConfig.logError(`Failed to navigate to page ${pageName}:`, error);
+            this.showError(`Failed to load page: ${pageName}`);
         }
     }
 
@@ -203,7 +247,7 @@ class App {
 
     // API helper methods
     async apiRequest(endpoint, options = {}) {
-        const url = `${this.apiBaseUrl}${endpoint}`;
+        const url = AppConfig.getApiUrl(endpoint);
         const defaultHeaders = window.tgApp?.isInTelegram
             ? window.tgApp.getAuthHeaders()
             : { 'Content-Type': 'application/json' };
@@ -230,6 +274,21 @@ class App {
             method: 'POST',
             body: JSON.stringify(data)
         });
+    }
+
+    // Utility method to go back to welcome page
+    goHome() {
+        location.reload();
+    }
+
+    // Get current user data
+    getCurrentUser() {
+        return this.currentUser;
+    }
+
+    // Get current page
+    getCurrentPage() {
+        return this.currentPage;
     }
 }
 

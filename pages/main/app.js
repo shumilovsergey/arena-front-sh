@@ -4,12 +4,7 @@
 
 class MainPage {
     constructor() {
-        // Configure API base URL for GitHub Pages deployment
-        this.apiBaseUrl = window.location.hostname === 'localhost'
-            ? 'http://localhost:5000/api'
-            : 'https://your-backend-domain.com/api';  // Replace with your backend URL
         this.user = null;
-
         this.init();
     }
 
@@ -38,11 +33,19 @@ class MainPage {
 
     async loadUserData() {
         try {
+            // Try to get user from main app first
+            if (window.app && window.app.getCurrentUser()) {
+                this.user = window.app.getCurrentUser();
+                this.displayUserInfo();
+                return;
+            }
+
+            // If not available, fetch from API
             const headers = window.tgApp?.isInTelegram
                 ? window.tgApp.getAuthHeaders()
                 : { 'Content-Type': 'application/json' };
 
-            const response = await fetch(`${this.apiBaseUrl}/user`, {
+            const response = await fetch(AppConfig.getApiUrl('/user'), {
                 method: 'GET',
                 headers
             });
@@ -56,7 +59,7 @@ class MainPage {
             this.displayUserInfo();
 
         } catch (error) {
-            console.error('Failed to load user data:', error);
+            AppConfig.logError('Failed to load user data:', error);
             this.showError('Failed to load user data');
         }
     }
@@ -105,7 +108,7 @@ ${JSON.stringify(this.user.user_data, null, 2)}
                 ? window.tgApp.getAuthHeaders()
                 : { 'Content-Type': 'application/json' };
 
-            const response = await fetch(`${this.apiBaseUrl}/user`, {
+            const response = await fetch(AppConfig.getApiUrl('/user'), {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(updateData)
@@ -124,7 +127,7 @@ ${JSON.stringify(this.user.user_data, null, 2)}
             }
 
         } catch (error) {
-            console.error('Failed to update user data:', error);
+            AppConfig.logError('Failed to update user data:', error);
             this.showError('Failed to update user data');
 
             if (window.tgApp?.isInTelegram) {
@@ -145,8 +148,12 @@ ${JSON.stringify(this.user.user_data, null, 2)}
             window.tgApp.hideBackButton();
         }
 
-        // Go back to main app or previous page
-        window.history.back();
+        // Go back to main app
+        if (window.app) {
+            window.app.goHome();
+        } else {
+            window.history.back();
+        }
     }
 
     showError(message) {
