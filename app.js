@@ -9,27 +9,22 @@ class App {
         this.currentUser = null;
         this.currentPage = null;
         this.debugLogs = [];
+        this.debugConsoleVisible = false;
 
         this.init();
     }
 
     init() {
-        // Create debug console first
-        this.createDebugConsole();
-
-        this.debugLog('🚀 App initialization started');
-
         this.detectDevice();
-        this.debugLog('📱 Device detected:', this.deviceType);
-
         this.detectPlatform();
-        this.debugLog('💻 Platform detected:', this.platform);
-
         this.applyDeviceStyles();
         this.updateDeviceInfo();
         this.setupEventListeners();
 
-        this.debugLog('⚙️ Basic setup complete');
+        // Create debug console if enabled
+        if (AppConfig.app.debugConsole) {
+            this.createDebugConsole();
+        }
 
         // Initialize app after device detection
         this.initializeApp();
@@ -123,19 +118,20 @@ class App {
 
     async initializeApp() {
         try {
-            this.debugLog('🔄 Initializing app...');
+            this.debugLog('🚀 Initializing app...');
+            this.debugLog('📱 Window tgApp:', !!window.tgApp);
 
             // Wait for Telegram to be ready
             if (window.tgApp?.isInTelegram) {
                 this.debugLog('✅ Running in Telegram WebApp');
                 await this.authenticateUser();
             } else {
-                this.debugLog('❌ Not running in Telegram');
+                this.debugLog('❌ Not running in Telegram WebApp');
                 console.log('This app must be opened from Telegram');
                 this.showError('This app must be opened from Telegram');
             }
         } catch (error) {
-            this.debugLog('💥 App initialization failed:', error.message);
+            this.debugLog('❌ App initialization error:', error.message);
             console.error('App initialization error:', error);
             this.showError('Failed to initialize app');
         }
@@ -144,8 +140,6 @@ class App {
     async authenticateUser() {
         try {
             this.debugLog('🔐 Starting authentication...');
-
-            // Check Telegram WebApp availability
             this.debugLog('📱 Telegram WebApp available:', !!window.tgApp);
             this.debugLog('📱 Is in Telegram:', window.tgApp?.isInTelegram);
 
@@ -169,27 +163,27 @@ class App {
 
             this.debugLog('📥 Response status:', response.status);
             this.debugLog('📥 Response ok:', response.ok);
+            this.debugLog('📥 Response status text:', response.statusText);
 
             if (!response.ok && response.status !== 201) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const result = await response.json();
-            this.debugLog('✅ Response data:', result);
-            this.debugLog('🔍 Response keys:', Object.keys(result));
+            this.debugLog('📥 Response data:', result);
+            AppConfig.log('User authenticated:', result);
 
             // Handle both response formats: {user: {...}} or direct user data
             this.currentUser = result.user || result;
-            this.debugLog('👤 Current user set:', !!this.currentUser);
-
+            this.debugLog('✅ Authentication successful');
+            this.debugLog('👤 Current user:', this.currentUser);
             this.showAuthenticatedState();
-            this.debugLog('✅ Authentication successful!');
 
         } catch (error) {
             this.debugLog('❌ Authentication error:', error.message);
             this.debugLog('❌ Error stack:', error.stack);
             AppConfig.logError('Authentication failed:', error);
-            this.showError(`Authentication failed: ${error.message}`);
+            this.showError('Authentication failed');
         }
     }
 
@@ -207,19 +201,25 @@ class App {
 
     async navigateToPage(pageName) {
         try {
+            this.debugLog(`🔄 Navigating to page: ${pageName}`);
+
             const pageConfig = AppConfig.pages.paths[pageName];
             if (!pageConfig) {
                 throw new Error(`Page '${pageName}' not found`);
             }
 
+            this.debugLog('📄 Page config:', pageConfig);
             AppConfig.log(`Navigating to page: ${pageName}`);
 
             // Load page HTML
             const htmlPath = `${pageConfig}index.html`;
+            this.debugLog('📄 Loading HTML from:', htmlPath);
+
             const htmlResponse = await fetch(htmlPath);
             if (!htmlResponse.ok) throw new Error(`Failed to load page HTML: ${htmlResponse.status}`);
 
             const htmlContent = await htmlResponse.text();
+            this.debugLog('📄 HTML content loaded, length:', htmlContent.length);
 
             // Extract content from body (remove html/head tags)
             const parser = new DOMParser();
@@ -230,6 +230,7 @@ class App {
             const appEl = document.getElementById('app');
             if (appEl) {
                 appEl.innerHTML = pageContent;
+                this.debugLog('📄 HTML content injected into app container');
             }
 
             // Load page CSS
@@ -237,6 +238,7 @@ class App {
             const existingPageCSS = document.getElementById('page-css');
             if (existingPageCSS) {
                 existingPageCSS.remove();
+                this.debugLog('🎨 Removed existing page CSS');
             }
 
             const cssLink = document.createElement('link');
@@ -244,23 +246,28 @@ class App {
             cssLink.rel = 'stylesheet';
             cssLink.href = cssPath;
             document.head.appendChild(cssLink);
+            this.debugLog('🎨 Page CSS loaded:', cssPath);
 
             // Load page JavaScript
             const jsPath = `${pageConfig}app.js`;
             const existingPageJS = document.getElementById('page-js');
             if (existingPageJS) {
                 existingPageJS.remove();
+                this.debugLog('📜 Removed existing page JS');
             }
 
             const script = document.createElement('script');
             script.id = 'page-js';
             script.src = jsPath;
             document.head.appendChild(script);
+            this.debugLog('📜 Page JS loaded:', jsPath);
 
             this.currentPage = pageName;
+            this.debugLog('✅ Page navigation completed:', pageName);
             AppConfig.log(`Successfully loaded page: ${pageName}`);
 
         } catch (error) {
+            this.debugLog('❌ Page navigation error:', error.message);
             AppConfig.logError(`Failed to navigate to page ${pageName}:`, error);
             this.showError(`Failed to load page: ${pageName}`);
         }
@@ -288,7 +295,168 @@ class App {
         }
     }
 
-    // API helper methods
+    // Debug Console Methods
+    createDebugConsole() {
+        const debugConsole = document.createElement('div');
+        debugConsole.id = 'debug-console';
+        debugConsole.innerHTML = `
+            <div class="debug-header">
+                <span>🐛 Debug Console</span>
+                <button onclick="window.app.toggleDebugConsole()" class="debug-toggle">Toggle</button>
+                <button onclick="window.app.clearDebugLogs()" class="debug-clear">Clear</button>
+            </div>
+            <div class="debug-content" id="debug-content"></div>
+        `;
+        document.body.appendChild(debugConsole);
+        this.addDebugStyles();
+
+        this.debugLog('🚀 Debug console initialized');
+        this.debugLog('📱 Device type: ' + this.deviceType);
+        this.debugLog('📱 Platform: ' + this.platform);
+    }
+
+    addDebugStyles() {
+        const debugCSS = `
+            #debug-console {
+                position: fixed;
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                max-height: 300px;
+                background: rgba(0, 0, 0, 0.9);
+                color: #00ff00;
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                border: 1px solid #333;
+                border-radius: 8px;
+                z-index: 10000;
+                overflow: hidden;
+                transition: all 0.3s ease;
+            }
+
+            .debug-header {
+                background: rgba(0, 0, 0, 0.8);
+                padding: 8px;
+                border-bottom: 1px solid #333;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-weight: bold;
+            }
+
+            .debug-toggle, .debug-clear {
+                background: #333;
+                color: #00ff00;
+                border: 1px solid #555;
+                padding: 4px 8px;
+                font-size: 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-left: 4px;
+            }
+
+            .debug-toggle:hover, .debug-clear:hover {
+                background: #555;
+            }
+
+            .debug-content {
+                padding: 8px;
+                max-height: 250px;
+                overflow-y: auto;
+                line-height: 1.4;
+            }
+
+            .debug-entry {
+                margin-bottom: 4px;
+                word-wrap: break-word;
+            }
+
+            .debug-time {
+                color: #666;
+                font-size: 10px;
+            }
+
+            .debug-message {
+                color: #00ff00;
+            }
+
+            .debug-data {
+                color: #ffff00;
+                font-size: 11px;
+                margin-left: 16px;
+                white-space: pre-wrap;
+            }
+
+            .debug-minimized .debug-content {
+                display: none;
+            }
+
+            .debug-minimized {
+                max-height: 40px;
+            }
+        `;
+
+        const style = document.createElement('style');
+        style.textContent = debugCSS;
+        document.head.appendChild(style);
+    }
+
+    debugLog(message, data = null) {
+        if (!AppConfig.app.debugConsole) return;
+
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = { time: timestamp, message: message, data: data };
+
+        this.debugLogs.push(logEntry);
+
+        // Also log to console for development
+        if (data !== null) {
+            console.log(`[${timestamp}] ${message}`, data);
+        } else {
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        this.updateDebugDisplay();
+    }
+
+    updateDebugDisplay() {
+        const debugContent = document.getElementById('debug-content');
+        if (!debugContent) return;
+
+        const maxEntries = 50; // Limit entries to prevent memory issues
+        const recentLogs = this.debugLogs.slice(-maxEntries);
+
+        debugContent.innerHTML = recentLogs.map(entry => {
+            const dataStr = entry.data !== null
+                ? `\n${typeof entry.data === 'object' ? JSON.stringify(entry.data, null, 2) : entry.data}`
+                : '';
+
+            return `
+                <div class="debug-entry">
+                    <span class="debug-time">[${entry.time}]</span>
+                    <span class="debug-message">${entry.message}</span>
+                    ${dataStr ? `<div class="debug-data">${dataStr}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        // Auto-scroll to bottom
+        debugContent.scrollTop = debugContent.scrollHeight;
+    }
+
+    toggleDebugConsole() {
+        const debugConsole = document.getElementById('debug-console');
+        if (!debugConsole) return;
+
+        this.debugConsoleVisible = !this.debugConsoleVisible;
+        debugConsole.classList.toggle('debug-minimized', !this.debugConsoleVisible);
+    }
+
+    clearDebugLogs() {
+        this.debugLogs = [];
+        this.updateDebugDisplay();
+        this.debugLog('🧹 Debug logs cleared');
+    }\n\n    // API helper methods
     async apiRequest(endpoint, options = {}) {
         const url = AppConfig.getApiUrl(endpoint);
         const defaultHeaders = window.tgApp?.isInTelegram
@@ -305,8 +473,8 @@ class App {
 
         const response = await fetch(url, config);
 
-        if (!response.ok) {
-            throw new Error(`API request failed: ${response.status}`);
+        if (!response.ok && response.status !== 201) {
+            throw new Error(`API request failed: ${response.status}: ${response.statusText}`);
         }
 
         return response.json();
@@ -332,132 +500,6 @@ class App {
     // Get current page
     getCurrentPage() {
         return this.currentPage;
-    }
-
-    // Debug console methods
-    createDebugConsole() {
-        const debugConsole = document.createElement('div');
-        debugConsole.id = 'debug-console';
-        debugConsole.innerHTML = `
-            <div class="debug-header">
-                <span>🐛 Debug Console</span>
-                <button onclick="window.app.toggleDebugConsole()" class="debug-toggle">Toggle</button>
-                <button onclick="window.app.clearDebugLogs()" class="debug-clear">Clear</button>
-            </div>
-            <div class="debug-content" id="debug-content"></div>
-        `;
-        document.body.appendChild(debugConsole);
-
-        // Add CSS for debug console
-        this.addDebugStyles();
-
-        this.debugLog('🚀 Debug console initialized');
-    }
-
-    debugLog(message, data = null) {
-        const timestamp = new Date().toLocaleTimeString();
-        const logEntry = {
-            time: timestamp,
-            message: message,
-            data: data
-        };
-
-        this.debugLogs.push(logEntry);
-
-        // Also log to console
-        if (data !== null) {
-            console.log(`[${timestamp}] ${message}`, data);
-        } else {
-            console.log(`[${timestamp}] ${message}`);
-        }
-
-        this.updateDebugDisplay();
-    }
-
-    updateDebugDisplay() {
-        const debugContent = document.getElementById('debug-content');
-        if (!debugContent) return;
-
-        debugContent.innerHTML = this.debugLogs.slice(-20).map(log => {
-            const dataStr = log.data ? ` | ${JSON.stringify(log.data, null, 2)}` : '';
-            return `<div class="debug-entry">[${log.time}] ${log.message}${dataStr}</div>`;
-        }).join('');
-
-        // Auto scroll to bottom
-        debugContent.scrollTop = debugContent.scrollHeight;
-    }
-
-    toggleDebugConsole() {
-        const debugConsole = document.getElementById('debug-console');
-        if (debugConsole) {
-            debugConsole.classList.toggle('debug-minimized');
-        }
-    }
-
-    clearDebugLogs() {
-        this.debugLogs = [];
-        this.updateDebugDisplay();
-    }
-
-    addDebugStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
-            #debug-console {
-                position: fixed;
-                bottom: 10px;
-                left: 10px;
-                right: 10px;
-                max-height: 300px;
-                background: rgba(0, 0, 0, 0.9);
-                color: #00ff00;
-                font-family: 'Courier New', monospace;
-                font-size: 12px;
-                border: 1px solid #333;
-                border-radius: 8px;
-                z-index: 10000;
-                overflow: hidden;
-            }
-
-            .debug-header {
-                background: #333;
-                padding: 8px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-
-            .debug-toggle, .debug-clear {
-                background: #555;
-                color: white;
-                border: none;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-size: 10px;
-                margin-left: 4px;
-                cursor: pointer;
-            }
-
-            .debug-content {
-                padding: 8px;
-                max-height: 200px;
-                overflow-y: auto;
-            }
-
-            .debug-entry {
-                margin-bottom: 4px;
-                word-break: break-all;
-                white-space: pre-wrap;
-            }
-
-            .debug-minimized .debug-content {
-                display: none;
-            }
-
-            .debug-minimized {
-                max-height: 40px;
-            }
-        `;
-        document.head.appendChild(style);
     }
 }
 

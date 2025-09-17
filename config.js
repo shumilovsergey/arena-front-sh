@@ -8,7 +8,7 @@ window.AppConfig = {
     api: {
         baseUrl: window.location.hostname === 'localhost'
             ? 'http://localhost:5000/api'
-            : 'https://arena-back.sh-development.ru/api', // ← Backend API URL
+            : 'https://your-backend-domain.com/api', // ← Backend API URL with HTTPS and /api path
 
         // Request timeout in milliseconds
         timeout: 10000,
@@ -23,8 +23,11 @@ window.AppConfig = {
         name: 'Telegram App Template',
         version: '1.0.0',
 
-        // Debug mode (enables console logging)
-        debug: true, // Temporarily enabled for debugging
+        // Debug mode (enables console logging and debug console)
+        debug: window.location.hostname === 'localhost',
+
+        // Enable visual debug console for Telegram WebApp (set to false for production)
+        debugConsole: window.location.hostname === 'localhost',
 
         // Page system configuration
         defaultPage: 'welcome',

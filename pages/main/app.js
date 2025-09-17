@@ -51,10 +51,11 @@ class MainPage {
             });
 
             if (!response.ok && response.status !== 201) {
-                throw new Error(`HTTP ${response.status}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const result = await response.json();
+            // Handle both response formats: {user: {...}} or direct user data
             this.user = result.user || result;
             this.displayUserInfo();
 
@@ -115,10 +116,11 @@ ${JSON.stringify(this.user.user_data, null, 2)}
             });
 
             if (!response.ok && response.status !== 201) {
-                throw new Error(`HTTP ${response.status}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const result = await response.json();
+            // Handle both response formats: {user: {...}} or direct user data
             this.user = result.user || result;
             this.displayUserInfo();
 
