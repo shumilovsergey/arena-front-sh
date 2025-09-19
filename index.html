@@ -339,12 +339,10 @@
                 debugLog(`API URL: ${API_BASE_URL + '/user/get_data'}`);
 
                 debugLog('Making fetch request...');
-                debugLog('Request details:', {
-                    url: API_BASE_URL + '/user/get_data',
-                    method: 'POST',
-                    headers: headers,
-                    body: '{}'
-                });
+                debugLog('Request URL: ' + (API_BASE_URL + '/user/get_data'));
+                debugLog('Request method: POST');
+                debugLog('Request headers: ' + JSON.stringify(headers));
+                debugLog('Request body: {}');
 
                 let response;
                 try {
@@ -357,17 +355,27 @@
                     });
                     debugLog('Fetch request completed successfully');
                 } catch (fetchError) {
-                    debugLog(`Fetch error details:`, {
-                        message: fetchError.message,
-                        name: fetchError.name,
-                        stack: fetchError.stack,
-                        cause: fetchError.cause
-                    });
+                    debugLog('Fetch error message: ' + fetchError.message);
+                    debugLog('Fetch error name: ' + fetchError.name);
+                    debugLog('Fetch error stack: ' + (fetchError.stack || 'No stack'));
+                    debugLog('Fetch error cause: ' + (fetchError.cause || 'No cause'));
 
                     // Try alternative debugging
-                    debugLog('Navigator online:', navigator.onLine);
-                    debugLog('Location protocol:', window.location.protocol);
-                    debugLog('Location hostname:', window.location.hostname);
+                    debugLog('Navigator online: ' + navigator.onLine);
+                    debugLog('Location protocol: ' + window.location.protocol);
+                    debugLog('Location hostname: ' + window.location.hostname);
+
+                    // Test basic connectivity first
+                    debugLog('Testing basic connectivity...');
+                    try {
+                        const testResponse = await fetch('https://arena-back.sh-development.ru/api/health', {
+                            method: 'GET',
+                            mode: 'cors'
+                        });
+                        debugLog('Health check status: ' + testResponse.status);
+                    } catch (healthError) {
+                        debugLog('Health check failed: ' + healthError.message);
+                    }
 
                     // Fallback to XMLHttpRequest if fetch fails
                     debugLog('Fetch failed, trying XMLHttpRequest fallback...');
@@ -375,7 +383,8 @@
                         response = await makeXHRRequest(API_BASE_URL + '/user/get_data', 'POST', headers, JSON.stringify({}));
                         debugLog('XHR request completed successfully');
                     } catch (xhrError) {
-                        debugLog('XHR also failed:', xhrError.message);
+                        debugLog('XHR error message: ' + xhrError.message);
+                        debugLog('XHR error name: ' + xhrError.name);
                         throw new Error(`Both fetch and XHR failed: ${fetchError.message}`);
                     }
                 }
