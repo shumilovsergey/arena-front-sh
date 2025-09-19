@@ -47,9 +47,9 @@ const PRODUCTION = {
     app: {
         name: 'Telegram App Template',
         version: '1.0.0',
-        debug: true,
-        debugConsole: true,
-        enableDevMode: true,  // Disabled in production - Telegram auth required
+        debug: false,
+        debugConsole: false,
+        enableDevMode: false,  // Disabled in production - Telegram auth required
         devAuthHeader: 'dev-user-bypass',
     },
     telegram: {
