@@ -292,6 +292,43 @@
             return headers;
         }
 
+        // XMLHttpRequest fallback helper
+        function makeXHRRequest(url, method, headers, body) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open(method, url);
+
+                // Set headers
+                for (const [key, value] of Object.entries(headers)) {
+                    xhr.setRequestHeader(key, value);
+                }
+
+                xhr.onload = function() {
+                    // Create a response-like object
+                    const response = {
+                        status: xhr.status,
+                        ok: xhr.status >= 200 && xhr.status < 300,
+                        statusText: xhr.statusText,
+                        headers: new Map(),
+                        text: () => Promise.resolve(xhr.responseText),
+                        json: () => Promise.resolve(JSON.parse(xhr.responseText))
+                    };
+                    resolve(response);
+                };
+
+                xhr.onerror = function() {
+                    reject(new Error(`XHR Error: ${xhr.status} ${xhr.statusText}`));
+                };
+
+                xhr.ontimeout = function() {
+                    reject(new Error('XHR Timeout'));
+                };
+
+                xhr.timeout = 10000; // 10 second timeout
+                xhr.send(body);
+            });
+        }
+
         async function loadUserData() {
             try {
                 debugLog('Starting loadUserData...');
@@ -302,18 +339,45 @@
                 debugLog(`API URL: ${API_BASE_URL + '/user/get_data'}`);
 
                 debugLog('Making fetch request...');
+                debugLog('Request details:', {
+                    url: API_BASE_URL + '/user/get_data',
+                    method: 'POST',
+                    headers: headers,
+                    body: '{}'
+                });
+
                 let response;
                 try {
                     response = await fetch(API_BASE_URL + '/user/get_data', {
                         method: 'POST',
                         headers: headers,
-                        body: JSON.stringify({})
+                        body: JSON.stringify({}),
+                        mode: 'cors',
+                        credentials: 'omit'
                     });
                     debugLog('Fetch request completed successfully');
                 } catch (fetchError) {
-                    debugLog(`Fetch error: ${fetchError.message}`);
-                    debugLog(`Fetch error type: ${fetchError.name}`);
-                    throw new Error(`Network error: ${fetchError.message}`);
+                    debugLog(`Fetch error details:`, {
+                        message: fetchError.message,
+                        name: fetchError.name,
+                        stack: fetchError.stack,
+                        cause: fetchError.cause
+                    });
+
+                    // Try alternative debugging
+                    debugLog('Navigator online:', navigator.onLine);
+                    debugLog('Location protocol:', window.location.protocol);
+                    debugLog('Location hostname:', window.location.hostname);
+
+                    // Fallback to XMLHttpRequest if fetch fails
+                    debugLog('Fetch failed, trying XMLHttpRequest fallback...');
+                    try {
+                        response = await makeXHRRequest(API_BASE_URL + '/user/get_data', 'POST', headers, JSON.stringify({}));
+                        debugLog('XHR request completed successfully');
+                    } catch (xhrError) {
+                        debugLog('XHR also failed:', xhrError.message);
+                        throw new Error(`Both fetch and XHR failed: ${fetchError.message}`);
+                    }
                 }
 
                 // Debug: Log response details
