@@ -292,96 +292,6 @@
             return headers;
         }
 
-        // XMLHttpRequest fallback helper
-        function makeXHRRequest(url, method, headers, body) {
-            return new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open(method, url);
-
-                // Set headers
-                for (const [key, value] of Object.entries(headers)) {
-                    xhr.setRequestHeader(key, value);
-                }
-
-                xhr.onload = function() {
-                    // Create a response-like object
-                    const response = {
-                        status: xhr.status,
-                        ok: xhr.status >= 200 && xhr.status < 300,
-                        statusText: xhr.statusText,
-                        headers: new Map(),
-                        text: () => Promise.resolve(xhr.responseText),
-                        json: () => Promise.resolve(JSON.parse(xhr.responseText))
-                    };
-                    resolve(response);
-                };
-
-                xhr.onerror = function() {
-                    reject(new Error(`XHR Error: ${xhr.status} ${xhr.statusText}`));
-                };
-
-                xhr.ontimeout = function() {
-                    reject(new Error('XHR Timeout'));
-                };
-
-                xhr.timeout = 10000; // 10 second timeout
-                xhr.send(body);
-            });
-        }
-
-        // Script-based loading (bypasses CSP)
-        function loadDataViaScript() {
-            return new Promise((resolve, reject) => {
-                const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-                // Create global callback
-                window[callbackName] = function(data) {
-                    // Clean up
-                    delete window[callbackName];
-                    if (script.parentNode) {
-                        script.parentNode.removeChild(script);
-                    }
-
-                    // Create response-like object
-                    const response = {
-                        status: 200,
-                        ok: true,
-                        statusText: 'OK',
-                        headers: new Map(),
-                        text: () => Promise.resolve(JSON.stringify(data)),
-                        json: () => Promise.resolve(data)
-                    };
-                    resolve(response);
-                };
-
-                // Create script element
-                const script = document.createElement('script');
-                script.onerror = function() {
-                    delete window[callbackName];
-                    reject(new Error('Script loading failed'));
-                };
-
-                // Encode the init data for URL
-                const encodedInitData = encodeURIComponent(tgInitData || '');
-
-                // Create JSONP URL - we'll need to add this endpoint to your backend
-                const jsonpUrl = `${API_BASE_URL}/user/get_data_jsonp?callback=${callbackName}&init_data=${encodedInitData}`;
-
-                script.src = jsonpUrl;
-                document.head.appendChild(script);
-
-                // Timeout
-                setTimeout(() => {
-                    if (window[callbackName]) {
-                        delete window[callbackName];
-                        if (script.parentNode) {
-                            script.parentNode.removeChild(script);
-                        }
-                        reject(new Error('JSONP timeout'));
-                    }
-                }, 10000);
-            });
-        }
 
         async function loadUserData() {
             try {
@@ -389,146 +299,22 @@
                 showStatus('Loading user data...', 'info');
 
                 const headers = getAuthHeaders();
-                debugLog(`Auth headers: ${JSON.stringify(headers)}`);
-                debugLog(`API URL: ${API_BASE_URL + '/user/get_data'}`);
+                debugLog(`Making request to: ${API_BASE_URL + '/user/get_data'}`);
 
-                debugLog('Making fetch request...');
-                debugLog('Request URL: ' + (API_BASE_URL + '/user/get_data'));
-                debugLog('Request method: POST');
-                debugLog('Request headers: ' + JSON.stringify(headers));
-                debugLog('Request body: {}');
-
-                let response;
-                try {
-                    response = await fetch(API_BASE_URL + '/user/get_data', {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify({}),
-                        mode: 'cors',
-                        credentials: 'omit'
-                    });
-                    debugLog('Fetch request completed successfully');
-                } catch (fetchError) {
-                    debugLog('Fetch error message: ' + fetchError.message);
-                    debugLog('Fetch error name: ' + fetchError.name);
-                    debugLog('Fetch error stack: ' + (fetchError.stack || 'No stack'));
-                    debugLog('Fetch error cause: ' + (fetchError.cause || 'No cause'));
-
-                    // Try alternative debugging
-                    debugLog('Navigator online: ' + navigator.onLine);
-                    debugLog('Location protocol: ' + window.location.protocol);
-                    debugLog('Location hostname: ' + window.location.hostname);
-                    debugLog('User agent: ' + navigator.userAgent);
-                    debugLog('Telegram WebApp available: ' + !!window.Telegram);
-                    debugLog('Running in iframe: ' + (window !== window.top));
-
-                    // Test basic connectivity first
-                    debugLog('Testing basic connectivity...');
-                    try {
-                        const testResponse = await fetch('https://arena-back.sh-development.ru/api/health', {
-                            method: 'GET',
-                            mode: 'cors'
-                        });
-                        debugLog('Health check status: ' + testResponse.status);
-                    } catch (healthError) {
-                        debugLog('Health check failed: ' + healthError.message);
-                    }
-
-                    // Try different fetch configurations
-                    debugLog('Trying fetch without CORS mode...');
-                    try {
-                        response = await fetch(API_BASE_URL + '/user/get_data', {
-                            method: 'POST',
-                            headers: headers,
-                            body: JSON.stringify({})
-                            // Remove mode and credentials
-                        });
-                        debugLog('Fetch without CORS mode succeeded');
-                    } catch (fetchError2) {
-                        debugLog('Fetch without CORS failed: ' + fetchError2.message);
-
-                        // Fallback to XMLHttpRequest if fetch fails
-                        debugLog('Fetch failed, trying XMLHttpRequest fallback...');
-                        try {
-                            response = await makeXHRRequest(API_BASE_URL + '/user/get_data', 'POST', headers, JSON.stringify({}));
-                            debugLog('XHR request completed successfully');
-                        } catch (xhrError) {
-                            debugLog('XHR error message: ' + xhrError.message);
-                            debugLog('XHR error name: ' + xhrError.name);
-
-                            // Last resort: try with different headers
-                            debugLog('Trying XHR with minimal headers...');
-                            try {
-                                const minimalHeaders = { 'Content-Type': 'application/json' };
-                                if (tgInitData) {
-                                    minimalHeaders['X-Telegram-Init-Data'] = tgInitData;
-                                }
-                                response = await makeXHRRequest(API_BASE_URL + '/user/get_data', 'POST', minimalHeaders, JSON.stringify({}));
-                                debugLog('XHR with minimal headers succeeded');
-                            } catch (finalError) {
-                                debugLog('All methods failed. Final error: ' + finalError.message);
-
-                                // Last resort: Try dynamic script loading (JSONP-style)
-                                debugLog('Trying dynamic script approach...');
-                                try {
-                                    response = await loadDataViaScript();
-                                    debugLog('Script loading succeeded');
-                                } catch (scriptError) {
-                                    debugLog('Script loading failed: ' + scriptError.message);
-                                    throw new Error(`All request methods failed: ${fetchError.message}`);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Debug: Log response details
-                debugLog(`Response status: ${response.status}`);
-                debugLog(`Response ok: ${response.ok}`);
-                try {
-                    debugLog(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
-                } catch (headerError) {
-                    debugLog(`Could not read response headers: ${headerError.message}`);
-                }
+                const response = await fetch(API_BASE_URL + '/user/get_data', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({})
+                });
 
                 if (!response.ok) {
-                    try {
-                        const errorText = await response.text();
-                        debugLog(`Error response text: ${errorText}`);
-                        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-                    } catch (textError) {
-                        debugLog(`Could not read error response text: ${textError.message}`);
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
+                    const errorText = await response.text();
+                    debugLog(`Error response: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
-                // Get raw response text first
-                let responseText;
-                try {
-                    responseText = await response.text();
-                    debugLog(`Raw response text: "${responseText}"`);
-                    debugLog(`Response text length: ${responseText.length}`);
-                } catch (textError) {
-                    debugLog(`Could not read response text: ${textError.message}`);
-                    throw new Error(`Failed to read response body: ${textError.message}`);
-                }
-
-                if (!responseText || responseText.length === 0) {
-                    throw new Error('Empty response from server');
-                }
-
-                // Try to parse JSON
-                let responseData;
-                try {
-                    responseData = JSON.parse(responseText);
-                    debugLog(`Parsed response data: ${JSON.stringify(responseData)}`);
-                } catch (parseError) {
-                    debugLog(`JSON parse error: ${parseError.message}`);
-                    throw new Error(`Invalid JSON response: ${parseError.message}`);
-                }
-
-                const userData = responseData.user || responseData; // Handle both {user: {...}} and direct user object
-                debugLog(`Extracted user data: ${JSON.stringify(userData)}`);
+                const responseData = await response.json();
+                const userData = responseData.user || responseData;
 
                 if (!userData) {
                     throw new Error('No user data in response');

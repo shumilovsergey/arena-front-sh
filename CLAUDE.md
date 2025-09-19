@@ -113,7 +113,21 @@ After deployment, update the backend URL in `config.js` to point to your product
 ## Important Notes
 
 - **No Build Process**: This is a vanilla JavaScript app with no build step required
-- **Device Detection**: Happens automatically on app initialization
-- **Telegram Theme**: Applied automatically when running in Telegram WebApp
+- **Single File Application**: Current implementation is entirely contained in `index.html`
+- **Telegram Integration**: Uses official Telegram WebApp JavaScript SDK
 - **API Authentication**: Uses Telegram WebApp init data for secure authentication
-- **Responsive by Default**: Automatically adapts to device type and platform
+- **Production Backend**: Currently points to `https://arena-back.sh-development.ru/api`
+
+## Known Issues and Solutions
+
+### CORS Issue (Resolved)
+The backend had restrictive CORS configuration that blocked Telegram WebApp requests.
+
+**Issue**: Status 0 errors, "Load failed" in Telegram WebApp environment
+**Solution**: Update backend CORS configuration (see `backend_note.md`)
+**Root Cause**: Arena backend was too restrictive compared to working Telegram Drive backend
+
+### Backend Configuration Required
+See `backend_note.md` for detailed backend changes needed to make the frontend work properly.
+
+**Quick Fix**: Change backend CORS from restrictive to `CORS(app)` like the working Telegram Drive project.
