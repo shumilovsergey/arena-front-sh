@@ -1,5 +1,5 @@
 /**
- * Main application logic
+ * Simple Telegram Web App - No page navigation, single view
  */
 
 class App {
@@ -7,7 +7,6 @@ class App {
         this.deviceType = 'unknown';
         this.platform = 'unknown';
         this.currentUser = null;
-        this.currentPage = null;
         this.debugLogs = [];
         this.debugConsoleVisible = false;
 
@@ -26,7 +25,7 @@ class App {
             this.createDebugConsole();
         }
 
-        // Initialize app after device detection
+        // Initialize app
         this.initializeApp();
     }
 
@@ -94,9 +93,15 @@ class App {
     }
 
     setupEventListeners() {
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            startBtn.addEventListener('click', () => this.handleStart());
+        const loadBtn = document.getElementById('load-btn');
+        const updateBtn = document.getElementById('update-btn');
+
+        if (loadBtn) {
+            loadBtn.addEventListener('click', () => this.handleLoadUser());
+        }
+
+        if (updateBtn) {
+            updateBtn.addEventListener('click', () => this.handleUpdateUser());
         }
 
         // Handle orientation changes
@@ -118,39 +123,42 @@ class App {
 
     async initializeApp() {
         try {
-            this.debugLog('🚀 Initializing app...');
+            this.debugLog('🚀 Initializing simple app...');
             this.debugLog('📱 Window tgApp:', !!window.tgApp);
+            this.debugLog('🌐 Backend URL:', AppConfig.api.baseUrl);
 
-            // Wait for Telegram to be ready
+            // Check if running in Telegram
             if (window.tgApp?.isInTelegram) {
                 this.debugLog('✅ Running in Telegram WebApp');
-                await this.authenticateUser();
+                // Auto-load user data when in Telegram
+                await this.handleLoadUser();
             } else {
-                this.debugLog('❌ Not running in Telegram WebApp');
-                console.log('This app must be opened from Telegram');
-                this.showError('This app must be opened from Telegram');
+                this.debugLog('⚠️ Not running in Telegram WebApp - manual load available');
+                this.showMessage('Ready to test. Click "Load User Data" to test backend connection.');
             }
         } catch (error) {
             this.debugLog('❌ App initialization error:', error.message);
             console.error('App initialization error:', error);
-            this.showError('Failed to initialize app');
+            this.showError('Failed to initialize app: ' + error.message);
         }
     }
 
-    async authenticateUser() {
+    async handleLoadUser() {
         try {
-            this.debugLog('🔐 Starting authentication...');
-            this.debugLog('📱 Telegram WebApp available:', !!window.tgApp);
-            this.debugLog('📱 Is in Telegram:', window.tgApp?.isInTelegram);
+            this.debugLog('🔐 Loading user data...');
+            this.showMessage('Loading user data...');
 
-            const userData = window.tgApp.getUserData();
-            this.debugLog('👤 User data:', userData);
+            const loadBtn = document.getElementById('load-btn');
+            if (loadBtn) {
+                loadBtn.textContent = 'Loading...';
+                loadBtn.disabled = true;
+            }
 
-            const initData = window.tgApp.validateInitData();
-            this.debugLog('🔑 Init data available:', !!initData);
-            this.debugLog('🔑 Init data length:', initData?.length || 0);
+            // Get auth headers
+            const headers = window.tgApp?.isInTelegram
+                ? window.tgApp.getAuthHeaders()
+                : { 'Content-Type': 'application/json' };
 
-            const headers = window.tgApp.getAuthHeaders();
             this.debugLog('📤 Request headers:', headers);
 
             const url = AppConfig.getApiUrl('/user');
@@ -163,139 +171,152 @@ class App {
 
             this.debugLog('📥 Response status:', response.status);
             this.debugLog('📥 Response ok:', response.ok);
-            this.debugLog('📥 Response status text:', response.statusText);
 
             if (!response.ok && response.status !== 201) {
+                const errorText = await response.text();
+                this.debugLog('❌ Error response:', errorText);
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const result = await response.json();
             this.debugLog('📥 Response data:', result);
-            AppConfig.log('User authenticated:', result);
 
             // Handle both response formats: {user: {...}} or direct user data
             this.currentUser = result.user || result;
-            this.debugLog('✅ Authentication successful');
-            this.debugLog('👤 Current user:', this.currentUser);
-            this.showAuthenticatedState();
+            this.debugLog('✅ User loaded successfully');
+            this.displayUserInfo();
+
+            // Enable update button
+            const updateBtn = document.getElementById('update-btn');
+            if (updateBtn) {
+                updateBtn.disabled = false;
+            }
 
         } catch (error) {
-            this.debugLog('❌ Authentication error:', error.message);
-            this.debugLog('❌ Error stack:', error.stack);
-            AppConfig.logError('Authentication failed:', error);
-            this.showError('Authentication failed');
+            this.debugLog('❌ Load user error:', error.message);
+            console.error('Failed to load user:', error);
+            this.showError('Failed to load user data: ' + error.message);
+        } finally {
+            const loadBtn = document.getElementById('load-btn');
+            if (loadBtn) {
+                loadBtn.textContent = 'Load User Data';
+                loadBtn.disabled = false;
+            }
         }
     }
 
-    async handleStart() {
-        if (window.tgApp?.isInTelegram) {
-            window.tgApp.hapticFeedback('impact', 'light');
-
-            // Navigate to main app (you can customize this)
-            this.navigateToPage('main');
-        } else {
-            // Not in Telegram - should not happen as we check earlier
-            this.showError('This app must be opened from Telegram');
-        }
-    }
-
-    async navigateToPage(pageName) {
+    async handleUpdateUser() {
         try {
-            this.debugLog(`🔄 Navigating to page: ${pageName}`);
+            this.debugLog('📝 Updating user data...');
 
-            const pageConfig = AppConfig.pages.paths[pageName];
-            if (!pageConfig) {
-                throw new Error(`Page '${pageName}' not found`);
+            const updateBtn = document.getElementById('update-btn');
+            if (updateBtn) {
+                updateBtn.textContent = 'Updating...';
+                updateBtn.disabled = true;
             }
 
-            this.debugLog('📄 Page config:', pageConfig);
-            AppConfig.log(`Navigating to page: ${pageName}`);
+            // Get auth headers
+            const headers = window.tgApp?.isInTelegram
+                ? window.tgApp.getAuthHeaders()
+                : { 'Content-Type': 'application/json' };
 
-            // Load page HTML
-            const htmlPath = `${pageConfig}index.html`;
-            this.debugLog('📄 Loading HTML from:', htmlPath);
+            // Add timestamp to user_data
+            const updateData = {
+                user_data: {
+                    ...this.currentUser.user_data,
+                    last_update: new Date().toISOString(),
+                    update_count: (this.currentUser.user_data.update_count || 0) + 1
+                }
+            };
 
-            const htmlResponse = await fetch(htmlPath);
-            if (!htmlResponse.ok) throw new Error(`Failed to load page HTML: ${htmlResponse.status}`);
+            this.debugLog('📤 Update data:', updateData);
 
-            const htmlContent = await htmlResponse.text();
-            this.debugLog('📄 HTML content loaded, length:', htmlContent.length);
+            const url = AppConfig.getApiUrl('/user');
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(updateData)
+            });
 
-            // Extract content from body (remove html/head tags)
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlContent, 'text/html');
-            const pageContent = doc.body.innerHTML;
+            this.debugLog('📥 Update response status:', response.status);
 
-            // Update app container
-            const appEl = document.getElementById('app');
-            if (appEl) {
-                appEl.innerHTML = pageContent;
-                this.debugLog('📄 HTML content injected into app container');
+            if (!response.ok && response.status !== 201) {
+                const errorText = await response.text();
+                this.debugLog('❌ Update error response:', errorText);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
-            // Load page CSS
-            const cssPath = `${pageConfig}style.css`;
-            const existingPageCSS = document.getElementById('page-css');
-            if (existingPageCSS) {
-                existingPageCSS.remove();
-                this.debugLog('🎨 Removed existing page CSS');
+            const result = await response.json();
+            this.debugLog('📥 Update response data:', result);
+
+            // Handle both response formats
+            this.currentUser = result.user || result;
+            this.debugLog('✅ User updated successfully');
+            this.displayUserInfo();
+
+            if (window.tgApp?.isInTelegram) {
+                window.tgApp.hapticFeedback('notification', 'success');
             }
-
-            const cssLink = document.createElement('link');
-            cssLink.id = 'page-css';
-            cssLink.rel = 'stylesheet';
-            cssLink.href = cssPath;
-            document.head.appendChild(cssLink);
-            this.debugLog('🎨 Page CSS loaded:', cssPath);
-
-            // Load page JavaScript
-            const jsPath = `${pageConfig}app.js`;
-            const existingPageJS = document.getElementById('page-js');
-            if (existingPageJS) {
-                existingPageJS.remove();
-                this.debugLog('📜 Removed existing page JS');
-            }
-
-            const script = document.createElement('script');
-            script.id = 'page-js';
-            script.src = jsPath;
-            document.head.appendChild(script);
-            this.debugLog('📜 Page JS loaded:', jsPath);
-
-            this.currentPage = pageName;
-            this.debugLog('✅ Page navigation completed:', pageName);
-            AppConfig.log(`Successfully loaded page: ${pageName}`);
 
         } catch (error) {
-            this.debugLog('❌ Page navigation error:', error.message);
-            AppConfig.logError(`Failed to navigate to page ${pageName}:`, error);
-            this.showError(`Failed to load page: ${pageName}`);
+            this.debugLog('❌ Update user error:', error.message);
+            console.error('Failed to update user:', error);
+            this.showError('Failed to update user data: ' + error.message);
+
+            if (window.tgApp?.isInTelegram) {
+                window.tgApp.hapticFeedback('notification', 'error');
+            }
+        } finally {
+            const updateBtn = document.getElementById('update-btn');
+            if (updateBtn) {
+                updateBtn.textContent = 'Update Data';
+                updateBtn.disabled = false;
+            }
         }
     }
 
-    showAuthenticatedState() {
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            startBtn.textContent = 'Enter App';
-            startBtn.style.background = 'var(--tg-theme-button-color, #00a651)';
-        }
+    displayUserInfo() {
+        const userInfoEl = document.getElementById('user-info');
+        if (!userInfoEl || !this.currentUser) return;
+
+        userInfoEl.innerHTML = `
+            <h3>✅ User Data Loaded</h3>
+            <div class="user-details">
+                <p><strong>ID:</strong> ${this.currentUser.telegram_id}</p>
+                <p><strong>Name:</strong> ${this.currentUser.first_name} ${this.currentUser.last_name || ''}</p>
+                ${this.currentUser.username ? `<p><strong>Username:</strong> @${this.currentUser.username}</p>` : ''}
+                <p><strong>Language:</strong> ${this.currentUser.language_code || 'Unknown'}</p>
+                <p><strong>Created:</strong> ${new Date(this.currentUser.created_at).toLocaleDateString()}</p>
+                <p><strong>Last Updated:</strong> ${new Date(this.currentUser.updated_at).toLocaleDateString()}</p>
+
+                <div class="user-data-section">
+                    <h4>User Data:</h4>
+                    <pre>${JSON.stringify(this.currentUser.user_data, null, 2)}</pre>
+                </div>
+            </div>
+        `;
     }
 
+    showMessage(message) {
+        const userInfoEl = document.getElementById('user-info');
+        if (userInfoEl) {
+            userInfoEl.innerHTML = `<p>${message}</p>`;
+        }
+    }
 
     showError(message) {
-        const appEl = document.getElementById('app');
-        if (appEl) {
-            appEl.innerHTML = `
-                <div class="error-container">
-                    <h2>Error</h2>
+        const userInfoEl = document.getElementById('user-info');
+        if (userInfoEl) {
+            userInfoEl.innerHTML = `
+                <div class="error-message">
+                    <h3>❌ Error</h3>
                     <p>${message}</p>
-                    <button onclick="location.reload()" class="primary-btn">Retry</button>
                 </div>
             `;
         }
     }
 
-    // Debug Console Methods
+    // Debug Console Methods (same as before but simplified)
     createDebugConsole() {
         const debugConsole = document.createElement('div');
         debugConsole.id = 'debug-console';
@@ -322,7 +343,7 @@ class App {
                 bottom: 10px;
                 left: 10px;
                 right: 10px;
-                max-height: 300px;
+                max-height: 250px;
                 background: rgba(0, 0, 0, 0.9);
                 color: #00ff00;
                 font-family: 'Courier New', monospace;
@@ -361,7 +382,7 @@ class App {
 
             .debug-content {
                 padding: 8px;
-                max-height: 250px;
+                max-height: 200px;
                 overflow-y: auto;
                 line-height: 1.4;
             }
@@ -409,7 +430,7 @@ class App {
 
         this.debugLogs.push(logEntry);
 
-        // Also log to console for development
+        // Also log to console
         if (data !== null) {
             console.log(`[${timestamp}] ${message}`, data);
         } else {
@@ -423,7 +444,7 @@ class App {
         const debugContent = document.getElementById('debug-content');
         if (!debugContent) return;
 
-        const maxEntries = 50; // Limit entries to prevent memory issues
+        const maxEntries = 30;
         const recentLogs = this.debugLogs.slice(-maxEntries);
 
         debugContent.innerHTML = recentLogs.map(entry => {
@@ -456,50 +477,6 @@ class App {
         this.debugLogs = [];
         this.updateDebugDisplay();
         this.debugLog('🧹 Debug logs cleared');
-    }\n\n    // API helper methods
-    async apiRequest(endpoint, options = {}) {
-        const url = AppConfig.getApiUrl(endpoint);
-        const defaultHeaders = window.tgApp?.isInTelegram
-            ? window.tgApp.getAuthHeaders()
-            : { 'Content-Type': 'application/json' };
-
-        const config = {
-            ...options,
-            headers: {
-                ...defaultHeaders,
-                ...options.headers
-            }
-        };
-
-        const response = await fetch(url, config);
-
-        if (!response.ok && response.status !== 201) {
-            throw new Error(`API request failed: ${response.status}: ${response.statusText}`);
-        }
-
-        return response.json();
-    }
-
-    async updateUserData(data) {
-        return this.apiRequest('/user', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // Utility method to go back to welcome page
-    goHome() {
-        location.reload();
-    }
-
-    // Get current user data
-    getCurrentUser() {
-        return this.currentUser;
-    }
-
-    // Get current page
-    getCurrentPage() {
-        return this.currentPage;
     }
 }
 
@@ -508,31 +485,86 @@ document.addEventListener('DOMContentLoaded', () => {
     window.app = new App();
 });
 
-// Add CSS for error and page states
+// Add additional CSS for the simplified UI
 const additionalCSS = `
-.error-container {
+.main-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 100vh;
-    padding: 40px 20px;
+    padding: 20px;
     text-align: center;
 }
 
-.error-container h2 {
-    color: #dc3545;
-    margin-bottom: 16px;
+.user-info {
+    margin: 20px 0;
+    padding: 20px;
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 12px;
+    max-width: 100%;
+    word-wrap: break-word;
 }
 
-.page-container {
+.user-details {
+    text-align: left;
+    max-width: 500px;
+}
+
+.user-data-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--tg-theme-hint-color, #ccc);
+}
+
+.user-data-section pre {
+    background: var(--tg-theme-bg-color, #fff);
+    border: 1px solid var(--tg-theme-hint-color, #ccc);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    overflow-x: auto;
+    text-align: left;
+}
+
+.actions {
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
     justify-content: center;
-    min-height: 100vh;
-    padding: 40px 20px;
-    text-align: center;
+}
+
+.secondary-btn {
+    background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    color: var(--tg-theme-text-color, #333);
+    border: 1px solid var(--tg-theme-button-color, #0088cc);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.secondary-btn:hover:not(:disabled) {
+    background: var(--tg-theme-button-color, #0088cc);
+    color: var(--tg-theme-button-text-color, #fff);
+}
+
+.secondary-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.error-message {
+    background: #fee;
+    border: 1px solid #fcc;
+    border-radius: 8px;
+    padding: 16px;
+    color: #c33;
+}
+
+.error-message h3 {
+    margin-top: 0;
 }
 `;
 

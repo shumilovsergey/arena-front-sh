@@ -29,9 +29,7 @@ window.AppConfig = {
         // Enable visual debug console for Telegram WebApp (set to false for production)
         debugConsole: window.location.hostname === 'localhost',
 
-        // Page system configuration
-        defaultPage: 'welcome',
-        pageTransitionDuration: 300
+        // Simple single-page app (no page navigation system)
     },
 
     // Telegram WebApp Configuration
@@ -46,16 +44,7 @@ window.AppConfig = {
         showMainButton: false
     },
 
-    // Pages configuration
-    pages: {
-        // Available pages in the app
-        available: ['welcome', 'main'],
-
-        // Page paths (relative to front/ directory)
-        paths: {
-            main: './pages/main/'
-        }
-    },
+    // Simple single-page app (no pages configuration needed)
 
     // UI Configuration
     ui: {
@@ -95,6 +84,9 @@ window.AppConfig.logError = function(...args) {
     if (config.api.baseUrl.includes('your-backend-domain.com')) {
         console.warn('⚠️ Please update the backend URL in config.js');
     }
+
+    // Log the configured backend URL for debugging
+    console.log('🌐 Backend URL configured:', config.api.baseUrl);
 
     config.log('Configuration loaded:', config);
 })();

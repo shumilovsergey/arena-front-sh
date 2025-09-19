@@ -9,17 +9,26 @@
 </head>
 <body>
     <div id="app">
-        <div class="welcome-container">
+        <div class="main-container">
             <div class="assets-container">
                 <img src="assets/logo.png" alt="App Logo" class="app-logo" onerror="this.style.display='none'">
             </div>
-            <h1>Welcome to Telegram App</h1>
-            <p>This is a template for quick Telegram app development</p>
+            <h1>Telegram App Template</h1>
+            <p>Template for Telegram Web App development</p>
+
             <div class="device-info">
                 <p>Device: <span id="device-type">Loading...</span></p>
                 <p>Platform: <span id="platform">Loading...</span></p>
             </div>
-            <button id="start-btn" class="primary-btn">Get Started</button>
+
+            <div id="user-info" class="user-info">
+                <p>Connecting to backend...</p>
+            </div>
+
+            <div class="actions">
+                <button id="load-btn" class="primary-btn">Load User Data</button>
+                <button id="update-btn" class="secondary-btn" disabled>Update Data</button>
+            </div>
         </div>
     </div>
 

@@ -26,12 +26,12 @@ body {
 }
 
 /* Platform-specific adjustments */
-.platform-ios .welcome-container {
+.platform-ios .main-container {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
 }
 
-.platform-android .welcome-container {
+.platform-android .main-container {
     padding: 20px;
 }
 
@@ -41,13 +41,13 @@ body {
     height: 100%;
 }
 
-.welcome-container {
+.main-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 100vh;
-    padding: 40px 20px;
+    padding: 20px;
     text-align: center;
 }
 
