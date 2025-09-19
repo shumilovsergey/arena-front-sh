@@ -161,6 +161,12 @@
         </div>
 
         <div class="test-section">
+            <div class="test-title">📝 Test Update User Data</div>
+            <button class="test-button" onclick="testUpdateUser()">Test POST /api/user with {test: "test_data"}</button>
+            <div id="update-result" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
             <div class="test-title">❤️ Test Health Check</div>
             <button class="test-button" onclick="testHealth()">Test /api/health endpoint</button>
             <div id="health-result" class="result" style="display: none;"></div>
@@ -319,6 +325,73 @@ Response Status: ${response.status}`;
             } finally {
                 button.disabled = false;
                 button.textContent = 'Test /api/user with Telegram Auth';
+            }
+        }
+
+        async function testUpdateUser() {
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = 'Updating user...';
+
+            try {
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+
+                if (tgInitData) {
+                    headers['X-Telegram-Init-Data'] = tgInitData;
+                }
+
+                const updateData = {
+                    user_data: {
+                        test: "test_data",
+                        timestamp: new Date().toISOString(),
+                        update_count: Math.floor(Math.random() * 1000)
+                    }
+                };
+
+                const requestInfo = `Headers being sent:
+${JSON.stringify(headers, null, 2)}
+
+Update Data:
+${JSON.stringify(updateData, null, 2)}`;
+
+                showResult('update-result', requestInfo + '\n\nMaking request...', 'info');
+
+                const response = await fetch(API_BASE_URL + '/user', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(updateData)
+                });
+
+                const data = await response.text();
+                let parsedData;
+                let parseError = null;
+
+                try {
+                    parsedData = JSON.parse(data);
+                } catch (e) {
+                    parsedData = data;
+                    parseError = e.message;
+                }
+
+                let debugInfo = `Raw Response Text: "${data}"
+Raw Response Length: ${data.length}
+Parse Error: ${parseError || 'None'}
+Response OK: ${response.ok}
+Response Status: ${response.status}`;
+
+                if (response.ok) {
+                    showResult('update-result', debugInfo + '\n\n' + formatResponse(response, parsedData), 'success');
+                } else {
+                    showResult('update-result', debugInfo + '\n\n' + formatResponse(response, parsedData), 'error');
+                }
+
+            } catch (error) {
+                showResult('update-result', formatError(error), 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Test POST /api/user with {test: "test_data"}';
             }
         }
 
