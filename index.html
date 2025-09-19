@@ -3,40 +3,345 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram App Template</title>
-    <link rel="stylesheet" href="style.css">
+    <title>API Test - Arena LoL</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--tg-theme-text-color, #333);
+        }
+
+        .test-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            border-radius: 8px;
+            background: var(--tg-theme-bg-color, #fff);
+        }
+
+        .test-title {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: var(--tg-theme-text-color, #333);
+        }
+
+        .test-button {
+            background: var(--tg-theme-button-color, #007bff);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .test-button:hover {
+            opacity: 0.8;
+        }
+
+        .test-button:disabled {
+            background: var(--tg-theme-hint-color, #ccc);
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .result.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .info-section {
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: var(--tg-theme-text-color, #333);
+        }
+
+        .info-value {
+            color: var(--tg-theme-hint-color, #666);
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #888);
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-    <div id="app">
-        <div class="main-container">
-            <div class="assets-container">
-                <img src="assets/logo.png" alt="App Logo" class="app-logo" onerror="this.style.display='none'">
-            </div>
-            <h1>Telegram App Template</h1>
-            <p>Template for Telegram Web App development</p>
+    <div class="container">
+        <h1>🧪 API Test Tool</h1>
 
-            <div class="device-info">
-                <p>Device: <span id="device-type">Loading...</span></p>
-                <p>Platform: <span id="platform">Loading...</span></p>
+        <div class="info-section">
+            <div class="test-title">📱 Environment Info</div>
+            <div class="info-row">
+                <span class="info-label">Current URL:</span>
+                <span class="info-value" id="current-url"></span>
             </div>
+            <div class="info-row">
+                <span class="info-label">API Base URL:</span>
+                <span class="info-value" id="api-url"></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">In Telegram:</span>
+                <span class="info-value" id="in-telegram"></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">User Agent:</span>
+                <span class="info-value" id="user-agent"></span>
+            </div>
+        </div>
 
-            <div id="user-info" class="user-info">
-                <p>Connecting to backend...</p>
-            </div>
+        <div class="test-section">
+            <div class="test-title">🌐 Test API Connection</div>
+            <button class="test-button" onclick="testApiConnection()">Test /api/user endpoint</button>
+            <div id="api-result" class="result" style="display: none;"></div>
+        </div>
 
-            <div class="actions">
-                <button id="load-btn" class="primary-btn">Load User Data</button>
-                <button id="update-btn" class="secondary-btn" disabled>Update Data</button>
-            </div>
+        <div class="test-section">
+            <div class="test-title">🔐 Test with Auth Headers</div>
+            <button class="test-button" onclick="testWithAuth()">Test /api/user with Telegram Auth</button>
+            <div id="auth-result" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">❤️ Test Health Check</div>
+            <button class="test-button" onclick="testHealth()">Test /api/health endpoint</button>
+            <div id="health-result" class="result" style="display: none;"></div>
         </div>
     </div>
 
-    <!-- Configuration -->
-    <script src="config.js"></script>
-    <!-- Telegram initialization -->
-    <script src="telegram.js"></script>
-    <!-- Main app logic -->
-    <script src="app.js"></script>
+    <script>
+        // Configuration
+        const API_BASE_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:5000/api'
+            : 'https://arena-back.sh-development.ru/api';
+
+        // Initialize Telegram WebApp
+        let tgWebApp = null;
+        let tgInitData = null;
+        let tgUser = null;
+
+        if (window.Telegram && window.Telegram.WebApp) {
+            tgWebApp = window.Telegram.WebApp;
+            tgWebApp.ready();
+            tgWebApp.expand();
+            tgInitData = tgWebApp.initData;
+            tgUser = tgWebApp.initDataUnsafe?.user;
+        }
+
+        // Update environment info
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('current-url').textContent = window.location.href;
+            document.getElementById('api-url').textContent = API_BASE_URL;
+            document.getElementById('in-telegram').textContent = tgWebApp ? 'Yes' : 'No';
+            document.getElementById('user-agent').textContent = navigator.userAgent;
+        });
+
+        function showResult(elementId, result, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+            element.textContent = result + '\n\nTimestamp: ' + new Date().toLocaleString();
+        }
+
+        function formatResponse(response, data) {
+            return `Status: ${response.status} ${response.statusText}
+URL: ${response.url}
+Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}
+
+Response Data:
+${JSON.stringify(data, null, 2)}`;
+        }
+
+        function formatError(error, response = null) {
+            let result = `Error: ${error.message}\n`;
+            if (response) {
+                result += `Status: ${response.status} ${response.statusText}\n`;
+                result += `URL: ${response.url}\n`;
+            }
+            return result;
+        }
+
+        async function testApiConnection() {
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = 'Testing...';
+
+            try {
+                showResult('api-result', 'Making request to ' + API_BASE_URL + '/user...', 'info');
+
+                const response = await fetch(API_BASE_URL + '/user', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.text();
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(data);
+                } catch (e) {
+                    parsedData = data;
+                }
+
+                if (response.ok) {
+                    showResult('api-result', formatResponse(response, parsedData), 'success');
+                } else {
+                    showResult('api-result', formatResponse(response, parsedData), 'error');
+                }
+
+            } catch (error) {
+                showResult('api-result', formatError(error), 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Test /api/user endpoint';
+            }
+        }
+
+        async function testWithAuth() {
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = 'Testing with auth...';
+
+            try {
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+
+                if (tgInitData) {
+                    headers['X-Telegram-Init-Data'] = tgInitData;
+                }
+
+                const headerInfo = `Headers being sent:
+${JSON.stringify(headers, null, 2)}
+
+Telegram Data:
+- User: ${JSON.stringify(tgUser, null, 2)}
+- Init Data Length: ${tgInitData ? tgInitData.length : 0}`;
+
+                showResult('auth-result', headerInfo + '\n\nMaking request...', 'info');
+
+                const response = await fetch(API_BASE_URL + '/user', {
+                    method: 'GET',
+                    headers: headers
+                });
+
+                const data = await response.text();
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(data);
+                } catch (e) {
+                    parsedData = data;
+                }
+
+                if (response.ok) {
+                    showResult('auth-result', formatResponse(response, parsedData), 'success');
+                } else {
+                    showResult('auth-result', formatResponse(response, parsedData), 'error');
+                }
+
+            } catch (error) {
+                showResult('auth-result', formatError(error), 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Test /api/user with Telegram Auth';
+            }
+        }
+
+        async function testHealth() {
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = 'Testing health...';
+
+            try {
+                showResult('health-result', 'Making request to ' + API_BASE_URL + '/health...', 'info');
+
+                const response = await fetch(API_BASE_URL + '/health', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.text();
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(data);
+                } catch (e) {
+                    parsedData = data;
+                }
+
+                if (response.ok) {
+                    showResult('health-result', formatResponse(response, parsedData), 'success');
+                } else {
+                    showResult('health-result', formatResponse(response, parsedData), 'error');
+                }
+
+            } catch (error) {
+                showResult('health-result', formatError(error), 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Test /api/health endpoint';
+            }
+        }
+    </script>
 </body>
 </html>
