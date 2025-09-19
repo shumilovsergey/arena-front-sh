@@ -364,6 +364,9 @@
                     debugLog('Navigator online: ' + navigator.onLine);
                     debugLog('Location protocol: ' + window.location.protocol);
                     debugLog('Location hostname: ' + window.location.hostname);
+                    debugLog('User agent: ' + navigator.userAgent);
+                    debugLog('Telegram WebApp available: ' + !!window.Telegram);
+                    debugLog('Running in iframe: ' + (window !== window.top));
 
                     // Test basic connectivity first
                     debugLog('Testing basic connectivity...');
@@ -377,15 +380,42 @@
                         debugLog('Health check failed: ' + healthError.message);
                     }
 
-                    // Fallback to XMLHttpRequest if fetch fails
-                    debugLog('Fetch failed, trying XMLHttpRequest fallback...');
+                    // Try different fetch configurations
+                    debugLog('Trying fetch without CORS mode...');
                     try {
-                        response = await makeXHRRequest(API_BASE_URL + '/user/get_data', 'POST', headers, JSON.stringify({}));
-                        debugLog('XHR request completed successfully');
-                    } catch (xhrError) {
-                        debugLog('XHR error message: ' + xhrError.message);
-                        debugLog('XHR error name: ' + xhrError.name);
-                        throw new Error(`Both fetch and XHR failed: ${fetchError.message}`);
+                        response = await fetch(API_BASE_URL + '/user/get_data', {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify({})
+                            // Remove mode and credentials
+                        });
+                        debugLog('Fetch without CORS mode succeeded');
+                    } catch (fetchError2) {
+                        debugLog('Fetch without CORS failed: ' + fetchError2.message);
+
+                        // Fallback to XMLHttpRequest if fetch fails
+                        debugLog('Fetch failed, trying XMLHttpRequest fallback...');
+                        try {
+                            response = await makeXHRRequest(API_BASE_URL + '/user/get_data', 'POST', headers, JSON.stringify({}));
+                            debugLog('XHR request completed successfully');
+                        } catch (xhrError) {
+                            debugLog('XHR error message: ' + xhrError.message);
+                            debugLog('XHR error name: ' + xhrError.name);
+
+                            // Last resort: try with different headers
+                            debugLog('Trying XHR with minimal headers...');
+                            try {
+                                const minimalHeaders = { 'Content-Type': 'application/json' };
+                                if (tgInitData) {
+                                    minimalHeaders['X-Telegram-Init-Data'] = tgInitData;
+                                }
+                                response = await makeXHRRequest(API_BASE_URL + '/user/get_data', 'POST', minimalHeaders, JSON.stringify({}));
+                                debugLog('XHR with minimal headers succeeded');
+                            } catch (finalError) {
+                                debugLog('All methods failed. Final error: ' + finalError.message);
+                                throw new Error(`All request methods failed: ${fetchError.message}`);
+                            }
+                        }
                     }
                 }
 
