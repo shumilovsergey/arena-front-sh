@@ -173,6 +173,14 @@
             Loading user data...
         </div>
 
+        <div id="debug-info" class="section" style="display: none;">
+            <div class="section-title">🐛 Debug Information</div>
+            <div id="debug-content" class="user-data-display" style="font-size: 12px; max-height: 300px; overflow-y: auto;">
+                <!-- Debug info will be shown here -->
+            </div>
+            <button class="button secondary" onclick="toggleDebug()">Hide Debug</button>
+        </div>
+
         <div id="main-content" style="display: none;">
             <div class="section">
                 <div class="section-title">👤 User Information</div>
@@ -223,6 +231,37 @@
             tgUser = tgWebApp.initDataUnsafe?.user;
         }
 
+        // Debug logging
+        let debugLogs = [];
+
+        function debugLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLogs.push(logEntry);
+            console.log(logEntry);
+            updateDebugDisplay();
+        }
+
+        function updateDebugDisplay() {
+            const debugContent = document.getElementById('debug-content');
+            if (debugContent) {
+                debugContent.textContent = debugLogs.join('\n');
+                debugContent.scrollTop = debugContent.scrollHeight;
+            }
+        }
+
+        function toggleDebug() {
+            const debugInfo = document.getElementById('debug-info');
+            const button = event.target;
+            if (debugInfo.style.display === 'none') {
+                debugInfo.style.display = 'block';
+                button.textContent = 'Hide Debug';
+            } else {
+                debugInfo.style.display = 'none';
+                button.textContent = 'Show Debug';
+            }
+        }
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadUserData();
@@ -261,12 +300,43 @@
                     headers: getAuthHeaders()
                 });
 
+                // Debug: Log response details
+                debugLog(`Response status: ${response.status}`);
+                debugLog(`Response ok: ${response.ok}`);
+                debugLog(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const errorText = await response.text();
+                    debugLog(`Error response text: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
                 }
 
-                const responseData = await response.json();
+                // Get raw response text first
+                const responseText = await response.text();
+                debugLog(`Raw response text: "${responseText}"`);
+                debugLog(`Response text length: ${responseText.length}`);
+
+                if (!responseText || responseText.length === 0) {
+                    throw new Error('Empty response from server');
+                }
+
+                // Try to parse JSON
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                    debugLog(`Parsed response data: ${JSON.stringify(responseData)}`);
+                } catch (parseError) {
+                    debugLog(`JSON parse error: ${parseError.message}`);
+                    throw new Error(`Invalid JSON response: ${parseError.message}`);
+                }
+
                 const userData = responseData.user || responseData; // Handle both {user: {...}} and direct user object
+                debugLog(`Extracted user data: ${JSON.stringify(userData)}`);
+
+                if (!userData) {
+                    throw new Error('No user data in response');
+                }
+
                 currentUserData = userData;
 
                 // Display user information
@@ -280,9 +350,18 @@
                 showStatus('User data loaded successfully!', 'success');
 
             } catch (error) {
+                debugLog(`ERROR: ${error.message}`);
                 console.error('Failed to load user:', error);
                 showStatus('Failed to load user data: ' + error.message, 'error');
-                document.getElementById('loading').textContent = 'Failed to load user data. Please try again.';
+                document.getElementById('loading').innerHTML = `
+                    Failed to load user data.
+                    <br><br>
+                    <button class="button secondary" onclick="toggleDebug(); document.getElementById('debug-info').style.display='block';">Show Debug Info</button>
+                    <button class="button" onclick="loadUserData()">Try Again</button>
+                `;
+
+                // Show debug section automatically on error
+                document.getElementById('debug-info').style.display = 'block';
             }
         }
 
