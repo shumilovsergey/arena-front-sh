@@ -306,7 +306,8 @@
                 try {
                     response = await fetch(API_BASE_URL + '/user/get_data', {
                         method: 'POST',
-                        headers: headers
+                        headers: headers,
+                        body: JSON.stringify({})
                     });
                     debugLog('Fetch request completed successfully');
                 } catch (fetchError) {
