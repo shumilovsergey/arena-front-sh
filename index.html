@@ -329,6 +329,60 @@
             });
         }
 
+        // Script-based loading (bypasses CSP)
+        function loadDataViaScript() {
+            return new Promise((resolve, reject) => {
+                const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+                // Create global callback
+                window[callbackName] = function(data) {
+                    // Clean up
+                    delete window[callbackName];
+                    if (script.parentNode) {
+                        script.parentNode.removeChild(script);
+                    }
+
+                    // Create response-like object
+                    const response = {
+                        status: 200,
+                        ok: true,
+                        statusText: 'OK',
+                        headers: new Map(),
+                        text: () => Promise.resolve(JSON.stringify(data)),
+                        json: () => Promise.resolve(data)
+                    };
+                    resolve(response);
+                };
+
+                // Create script element
+                const script = document.createElement('script');
+                script.onerror = function() {
+                    delete window[callbackName];
+                    reject(new Error('Script loading failed'));
+                };
+
+                // Encode the init data for URL
+                const encodedInitData = encodeURIComponent(tgInitData || '');
+
+                // Create JSONP URL - we'll need to add this endpoint to your backend
+                const jsonpUrl = `${API_BASE_URL}/user/get_data_jsonp?callback=${callbackName}&init_data=${encodedInitData}`;
+
+                script.src = jsonpUrl;
+                document.head.appendChild(script);
+
+                // Timeout
+                setTimeout(() => {
+                    if (window[callbackName]) {
+                        delete window[callbackName];
+                        if (script.parentNode) {
+                            script.parentNode.removeChild(script);
+                        }
+                        reject(new Error('JSONP timeout'));
+                    }
+                }, 10000);
+            });
+        }
+
         async function loadUserData() {
             try {
                 debugLog('Starting loadUserData...');
@@ -413,7 +467,16 @@
                                 debugLog('XHR with minimal headers succeeded');
                             } catch (finalError) {
                                 debugLog('All methods failed. Final error: ' + finalError.message);
-                                throw new Error(`All request methods failed: ${fetchError.message}`);
+
+                                // Last resort: Try dynamic script loading (JSONP-style)
+                                debugLog('Trying dynamic script approach...');
+                                try {
+                                    response = await loadDataViaScript();
+                                    debugLog('Script loading succeeded');
+                                } catch (scriptError) {
+                                    debugLog('Script loading failed: ' + scriptError.message);
+                                    throw new Error(`All request methods failed: ${fetchError.message}`);
+                                }
                             }
                         }
                     }
