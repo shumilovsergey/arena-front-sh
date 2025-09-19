@@ -6,9 +6,19 @@
 class TelegramApp {
     constructor() {
         this.webApp = window.Telegram?.WebApp;
-        this.isInTelegram = !!this.webApp;
         this.user = null;
         this.initData = null;
+
+        // Better detection: check if we have actual Telegram data, not just the WebApp object
+        this.isInTelegram = !!(this.webApp && this.webApp.initData);
+
+        console.log('🔍 Telegram detection:', {
+            hasWebApp: !!this.webApp,
+            hasInitData: !!(this.webApp && this.webApp.initData),
+            initDataLength: this.webApp?.initData?.length || 0,
+            isInTelegram: this.isInTelegram,
+            enableDevMode: AppConfig?.app?.enableDevMode
+        });
 
         this.init();
     }
@@ -166,16 +176,29 @@ class TelegramApp {
     }
 
     getAuthHeaders() {
-        if (!this.initData) {
-            console.warn('No Telegram init data available - sending request without auth header');
-            return {
+        console.log('🔍 getAuthHeaders called:', {
+            isInTelegram: this.isInTelegram,
+            enableDevMode: AppConfig?.app?.enableDevMode,
+            devAuthHeader: AppConfig?.app?.devAuthHeader
+        });
+
+        // If not in Telegram and dev mode is enabled, use dev auth header
+        if (!this.isInTelegram && AppConfig.app.enableDevMode) {
+            const headers = {
+                'X-Dev-Auth': AppConfig.app.devAuthHeader || 'dev-user-bypass',
                 'Content-Type': 'application/json'
             };
+            console.log('🔧 Using dev headers:', headers);
+            return headers;
         }
-        return {
-            'X-Telegram-Init-Data': this.initData,
+
+        // Standard Telegram authentication
+        const headers = {
+            'X-Telegram-Init-Data': this.initData || '',
             'Content-Type': 'application/json'
         };
+        console.log('🔧 Using Telegram headers:', headers);
+        return headers;
     }
 
     // User information getters

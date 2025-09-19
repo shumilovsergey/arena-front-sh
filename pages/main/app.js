@@ -45,9 +45,10 @@ class MainPage {
                 ? window.tgApp.getAuthHeaders()
                 : { 'Content-Type': 'application/json' };
 
-            const response = await fetch(AppConfig.getApiUrl('/user'), {
-                method: 'GET',
-                headers
+            const response = await fetch(AppConfig.getApiUrl('/get_data'), {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({})
             });
 
             if (!response.ok && response.status !== 201) {
@@ -109,7 +110,7 @@ ${JSON.stringify(this.user.user_data, null, 2)}
                 ? window.tgApp.getAuthHeaders()
                 : { 'Content-Type': 'application/json' };
 
-            const response = await fetch(AppConfig.getApiUrl('/user'), {
+            const response = await fetch(AppConfig.getApiUrl('/up_data'), {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(updateData)

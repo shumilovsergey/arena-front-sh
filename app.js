@@ -161,33 +161,22 @@ class App {
 
             this.debugLog('📤 Request headers:', headers);
 
-            const url = AppConfig.getApiUrl('/user');
+            const url = AppConfig.getApiUrl('/get_data');
             this.debugLog('🌐 Request URL:', url);
 
             const response = await fetch(url, {
-                method: 'GET',
-                headers: headers
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({})
             });
 
             this.debugLog('📥 Response status:', response.status);
             this.debugLog('📥 Response ok:', response.ok);
 
-            if (!response.ok && response.status !== 201) {
+            if (!response.ok) {
                 const errorText = await response.text();
                 this.debugLog('❌ Error response:', errorText);
-
-                // Parse JSON error if possible
-                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-                try {
-                    const errorData = JSON.parse(errorText);
-                    if (errorData.error) {
-                        errorMessage = errorData.error;
-                    }
-                } catch (e) {
-                    // Keep the original error message if JSON parsing fails
-                }
-
-                throw new Error(errorMessage);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const result = await response.json();
@@ -243,7 +232,7 @@ class App {
 
             this.debugLog('📤 Update data:', updateData);
 
-            const url = AppConfig.getApiUrl('/user');
+            const url = AppConfig.getApiUrl('/up_data');
             const response = await fetch(url, {
                 method: 'POST',
                 headers: headers,
@@ -252,22 +241,10 @@ class App {
 
             this.debugLog('📥 Update response status:', response.status);
 
-            if (!response.ok && response.status !== 201) {
+            if (!response.ok) {
                 const errorText = await response.text();
                 this.debugLog('❌ Update error response:', errorText);
-
-                // Parse JSON error if possible
-                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-                try {
-                    const errorData = JSON.parse(errorText);
-                    if (errorData.error) {
-                        errorMessage = errorData.error;
-                    }
-                } catch (e) {
-                    // Keep the original error message if JSON parsing fails
-                }
-
-                throw new Error(errorMessage);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const result = await response.json();
