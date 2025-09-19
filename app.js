@@ -175,7 +175,19 @@ class App {
             if (!response.ok && response.status !== 201) {
                 const errorText = await response.text();
                 this.debugLog('❌ Error response:', errorText);
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+                // Parse JSON error if possible
+                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    if (errorData.error) {
+                        errorMessage = errorData.error;
+                    }
+                } catch (e) {
+                    // Keep the original error message if JSON parsing fails
+                }
+
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();
@@ -243,7 +255,19 @@ class App {
             if (!response.ok && response.status !== 201) {
                 const errorText = await response.text();
                 this.debugLog('❌ Update error response:', errorText);
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+                // Parse JSON error if possible
+                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    if (errorData.error) {
+                        errorMessage = errorData.error;
+                    }
+                } catch (e) {
+                    // Keep the original error message if JSON parsing fails
+                }
+
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();

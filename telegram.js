@@ -166,8 +166,14 @@ class TelegramApp {
     }
 
     getAuthHeaders() {
+        if (!this.initData) {
+            console.warn('No Telegram init data available - sending request without auth header');
+            return {
+                'Content-Type': 'application/json'
+            };
+        }
         return {
-            'X-Telegram-Init-Data': this.initData || '',
+            'X-Telegram-Init-Data': this.initData,
             'Content-Type': 'application/json'
         };
     }
