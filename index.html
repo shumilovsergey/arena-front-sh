@@ -234,16 +234,25 @@ ${JSON.stringify(data, null, 2)}`;
 
                 const data = await response.text();
                 let parsedData;
+                let parseError = null;
+
                 try {
                     parsedData = JSON.parse(data);
                 } catch (e) {
                     parsedData = data;
+                    parseError = e.message;
                 }
 
+                let debugInfo = `Raw Response Text: "${data}"
+Raw Response Length: ${data.length}
+Parse Error: ${parseError || 'None'}
+Response OK: ${response.ok}
+Response Status: ${response.status}`;
+
                 if (response.ok) {
-                    showResult('api-result', formatResponse(response, parsedData), 'success');
+                    showResult('api-result', debugInfo + '\n\n' + formatResponse(response, parsedData), 'success');
                 } else {
-                    showResult('api-result', formatResponse(response, parsedData), 'error');
+                    showResult('api-result', debugInfo + '\n\n' + formatResponse(response, parsedData), 'error');
                 }
 
             } catch (error) {
@@ -284,16 +293,25 @@ Telegram Data:
 
                 const data = await response.text();
                 let parsedData;
+                let parseError = null;
+
                 try {
                     parsedData = JSON.parse(data);
                 } catch (e) {
                     parsedData = data;
+                    parseError = e.message;
                 }
 
+                let debugInfo = `Raw Response Text: "${data}"
+Raw Response Length: ${data.length}
+Parse Error: ${parseError || 'None'}
+Response OK: ${response.ok}
+Response Status: ${response.status}`;
+
                 if (response.ok) {
-                    showResult('auth-result', formatResponse(response, parsedData), 'success');
+                    showResult('auth-result', debugInfo + '\n\n' + formatResponse(response, parsedData), 'success');
                 } else {
-                    showResult('auth-result', formatResponse(response, parsedData), 'error');
+                    showResult('auth-result', debugInfo + '\n\n' + formatResponse(response, parsedData), 'error');
                 }
 
             } catch (error) {
