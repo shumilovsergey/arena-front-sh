@@ -67,9 +67,9 @@ The app communicates with a backend API using:
 - **Authentication**: Telegram WebApp init data sent in `X-Telegram-Init-Data` header
 - **Base URL**: Configured in `config.js`, automatically switches between development and production
 - **Endpoints**:
-  - `GET /api/user` - Get or create user data
-  - `POST /api/user` - Update user data
-  - `GET /api/health` - API health check
+  - `POST /api/user/get_data` - Retrieve or create user data
+  - `POST /api/user/up_data` - Update user data with new `user_data` object
+  - `GET /api/health` - Health check endpoint
 
 ## Development Workflow
 

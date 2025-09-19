@@ -299,13 +299,13 @@
 
                 const headers = getAuthHeaders();
                 debugLog(`Auth headers: ${JSON.stringify(headers)}`);
-                debugLog(`API URL: ${API_BASE_URL + '/user'}`);
+                debugLog(`API URL: ${API_BASE_URL + '/user/get_data'}`);
 
                 debugLog('Making fetch request...');
                 let response;
                 try {
-                    response = await fetch(API_BASE_URL + '/user', {
-                        method: 'GET',
+                    response = await fetch(API_BASE_URL + '/user/get_data', {
+                        method: 'POST',
                         headers: headers
                     });
                     debugLog('Fetch request completed successfully');
@@ -455,7 +455,7 @@
                     user_data: newUserData
                 };
 
-                const response = await fetch(API_BASE_URL + '/user', {
+                const response = await fetch(API_BASE_URL + '/user/up_data', {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify(updateData)
