@@ -79,6 +79,7 @@
             line-height: 1.4;
             margin-bottom: 15px;
             min-height: 100px;
+            color: #333 !important;
         }
 
         .input-group {
@@ -293,28 +294,57 @@
 
         async function loadUserData() {
             try {
+                debugLog('Starting loadUserData...');
                 showStatus('Loading user data...', 'info');
 
-                const response = await fetch(API_BASE_URL + '/user', {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
+                const headers = getAuthHeaders();
+                debugLog(`Auth headers: ${JSON.stringify(headers)}`);
+                debugLog(`API URL: ${API_BASE_URL + '/user'}`);
+
+                debugLog('Making fetch request...');
+                let response;
+                try {
+                    response = await fetch(API_BASE_URL + '/user', {
+                        method: 'GET',
+                        headers: headers
+                    });
+                    debugLog('Fetch request completed successfully');
+                } catch (fetchError) {
+                    debugLog(`Fetch error: ${fetchError.message}`);
+                    debugLog(`Fetch error type: ${fetchError.name}`);
+                    throw new Error(`Network error: ${fetchError.message}`);
+                }
 
                 // Debug: Log response details
                 debugLog(`Response status: ${response.status}`);
                 debugLog(`Response ok: ${response.ok}`);
-                debugLog(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+                try {
+                    debugLog(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+                } catch (headerError) {
+                    debugLog(`Could not read response headers: ${headerError.message}`);
+                }
 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    debugLog(`Error response text: ${errorText}`);
-                    throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+                    try {
+                        const errorText = await response.text();
+                        debugLog(`Error response text: ${errorText}`);
+                        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+                    } catch (textError) {
+                        debugLog(`Could not read error response text: ${textError.message}`);
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
                 }
 
                 // Get raw response text first
-                const responseText = await response.text();
-                debugLog(`Raw response text: "${responseText}"`);
-                debugLog(`Response text length: ${responseText.length}`);
+                let responseText;
+                try {
+                    responseText = await response.text();
+                    debugLog(`Raw response text: "${responseText}"`);
+                    debugLog(`Response text length: ${responseText.length}`);
+                } catch (textError) {
+                    debugLog(`Could not read response text: ${textError.message}`);
+                    throw new Error(`Failed to read response body: ${textError.message}`);
+                }
 
                 if (!responseText || responseText.length === 0) {
                     throw new Error('Empty response from server');
