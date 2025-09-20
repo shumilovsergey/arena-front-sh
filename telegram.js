@@ -204,74 +204,52 @@ class TelegramWebApp {
 
         try {
             const platform = this.getPlatform();
-            const userAgent = navigator.userAgent.toLowerCase();
-
-            // Better mobile detection
-            const isMobilePlatform = platform === 'android' || platform === 'ios' || platform === 'mobile';
-            const isMobileUA = /mobile|android|iphone|ipad|ipod/.test(userAgent);
-            const isDesktopPlatform = platform === 'web' || platform === 'macos' || platform === 'windows' || platform === 'linux';
-
-            // Force mobile treatment for iOS/Android regardless of other factors
-            const isMobile = isMobilePlatform || isMobileUA;
-            const isDesktop = isDesktopPlatform && !isMobile;
+            const isDesktop = platform === 'web' || platform === 'macos' || platform === 'windows' || platform === 'linux';
+            const isMobile = platform === 'android' || platform === 'ios' || platform === 'mobile';
 
             console.log('Platform detected:', platform);
-            console.log('User Agent:', userAgent);
-            console.log('Is Mobile Platform:', isMobilePlatform);
-            console.log('Is Mobile UA:', isMobileUA);
-            console.log('Final - Is Mobile:', isMobile);
-            console.log('Final - Is Desktop:', isDesktop);
+            console.log('Is Desktop:', isDesktop);
+            console.log('Is Mobile:', isMobile);
+            console.log('Telegram version:', this.getVersion());
 
-            if (isMobile) {
-                // Mobile devices: Always try fullscreen mode
-                console.log('Mobile device detected: Attempting fullscreen mode');
+            if (isDesktop) {
+                // Desktop: Use expand for fullsize mode
+                console.log('Desktop platform: Using expand()');
+                this.webApp.expand();
+            } else if (isMobile) {
+                // Mobile: Attempt fullscreen mode
+                console.log('Mobile platform: Attempting fullscreen mode');
 
-                // Try multiple approaches for fullscreen
-                let fullscreenAttempted = false;
-
-                // Method 1: Modern requestFullscreen (Telegram 8.0+)
-                if (this.webApp.isVersionAtLeast && this.webApp.isVersionAtLeast('8.0') && this.webApp.requestFullscreen) {
-                    console.log('Telegram version 8.0+: Using requestFullscreen()');
+                if (this.webApp.isVersionAtLeast && this.webApp.isVersionAtLeast('8.0')) {
+                    console.log('Telegram 8.0+: Using requestFullscreen()');
                     this.webApp.requestFullscreen();
-                    fullscreenAttempted = true;
 
-                    // Add event listeners for fullscreen state changes
+                    // Fullscreen event listeners
                     this.webApp.onEvent('fullscreenChanged', () => {
-                        console.log('Fullscreen state changed:', this.webApp.isFullscreen);
+                        console.log('Fullscreen status changed:', this.webApp.isFullscreen);
                     });
 
                     this.webApp.onEvent('fullscreenFailed', () => {
-                        console.log('Fullscreen failed, falling back to expand');
+                        console.log('Fullscreen request failed, falling back to expand');
                         this.webApp.expand();
                     });
-                }
 
-                // Method 2: Force expand if fullscreen not available or failed
-                if (!fullscreenAttempted) {
-                    console.log('Fullscreen not available, using expand() with forced mobile styling');
-                    this.webApp.expand();
-
-                    // Force mobile viewport behavior
+                    // Safety timeout for fullscreen - CRUCIAL for iOS
                     setTimeout(() => {
-                        this.forceMobileViewport();
-                    }, 100);
-                }
-
-            } else if (isDesktop) {
-                // Desktop devices: Use expand for fullsize window behavior
-                console.log('Desktop device detected: Using expand() for fullsize mode');
-                this.webApp.expand();
-            } else {
-                // Unknown platform: Assume mobile for safety
-                console.log('Unknown platform type:', platform, '- Assuming mobile, using fullscreen');
-                if (this.webApp.requestFullscreen) {
-                    this.webApp.requestFullscreen();
+                        if (!this.webApp.isFullscreen) {
+                            console.log('Fullscreen timeout reached, falling back to expand');
+                            this.webApp.expand();
+                        }
+                    }, 1000);
                 } else {
+                    // Fallback for older versions
+                    console.log('Older Telegram version: Using expand() fallback');
                     this.webApp.expand();
-                    setTimeout(() => {
-                        this.forceMobileViewport();
-                    }, 100);
                 }
+            } else {
+                // Unknown platform: default to expand
+                console.log('Unknown platform: Using expand() as default');
+                this.webApp.expand();
             }
         } catch (error) {
             console.warn('Failed to set optimal viewport mode:', error);
@@ -280,46 +258,6 @@ class TelegramWebApp {
         }
     }
 
-    // Force mobile viewport behavior with CSS
-    forceMobileViewport() {
-        console.log('Forcing mobile viewport behavior');
-
-        // Set viewport meta tag for mobile
-        let viewport = document.querySelector('meta[name="viewport"]');
-        if (viewport) {
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
-        }
-
-        // Add mobile-specific styles
-        const style = document.createElement('style');
-        style.textContent = `
-            html, body {
-                height: 100vh !important;
-                height: 100dvh !important;
-                overflow: hidden !important;
-                position: fixed !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-
-            .container {
-                height: 100vh !important;
-                height: 100dvh !important;
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-            }
-
-            /* Hide mobile browser UI */
-            @media screen and (max-width: 768px) {
-                html, body {
-                    height: 100vh !important;
-                    height: 100dvh !important;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-    }
 
     // Utility Methods
     close() {
