@@ -20,10 +20,8 @@ class TelegramWebApp {
             // Initialize WebApp
             this.webApp.ready();
 
-            // Auto-expand if enabled in config
-            if (window.CONFIG?.APP_CONFIG?.ENABLE_AUTO_EXPAND) {
-                this.webApp.expand();
-            }
+            // Set viewport mode based on device type
+            this.setOptimalViewportMode();
 
             this.isInitialized = true;
 
@@ -32,6 +30,8 @@ class TelegramWebApp {
 
             console.log('Telegram WebApp initialized successfully');
             console.log('User:', this.user);
+            console.log('Platform:', this.getPlatform());
+            console.log('Viewport mode set based on device type');
         } else {
             console.warn('Telegram WebApp not available - running in browser mode');
         }
@@ -162,6 +162,74 @@ class TelegramWebApp {
         this.webApp.showPopup(params);
     }
 
+    // Device Detection and Viewport Management
+    isMobileDevice() {
+        // Check user agent for mobile indicators
+        const userAgent = navigator.userAgent.toLowerCase();
+        const mobileKeywords = ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'];
+
+        // Also check screen width as backup
+        const isMobileScreen = window.innerWidth <= 768;
+
+        // Check if any mobile keyword is found in user agent
+        const isMobileUA = mobileKeywords.some(keyword => userAgent.includes(keyword));
+
+        return isMobileUA || isMobileScreen;
+    }
+
+    isDesktopDevice() {
+        // Check for desktop platforms
+        const platform = this.getPlatform();
+        const userAgent = navigator.userAgent.toLowerCase();
+
+        // Desktop platforms in Telegram
+        const desktopPlatforms = ['macos', 'windows', 'linux'];
+        const isDesktopPlatform = desktopPlatforms.includes(platform);
+
+        // Desktop user agent indicators
+        const desktopKeywords = ['windows', 'macintosh', 'linux', 'x11'];
+        const isDesktopUA = desktopKeywords.some(keyword => userAgent.includes(keyword));
+
+        // Large screen indicator
+        const isDesktopScreen = window.innerWidth > 768;
+
+        return isDesktopPlatform || (isDesktopUA && isDesktopScreen);
+    }
+
+    setOptimalViewportMode() {
+        if (!this.isInitialized) return;
+
+        try {
+            if (this.isMobileDevice()) {
+                // Mobile devices: Use fullscreen mode for immersive experience
+                console.log('Mobile device detected: Setting fullscreen mode');
+                if (this.webApp.requestFullscreen) {
+                    this.webApp.requestFullscreen();
+                } else {
+                    // Fallback to expand for older versions
+                    this.webApp.expand();
+                }
+            } else if (this.isDesktopDevice()) {
+                // Desktop devices: Use fullsize mode for better window management
+                console.log('Desktop device detected: Setting fullsize mode');
+                if (this.webApp.requestFullsize) {
+                    this.webApp.requestFullsize();
+                } else {
+                    // Fallback to expand for older versions
+                    this.webApp.expand();
+                }
+            } else {
+                // Unknown device: Default expand behavior
+                console.log('Unknown device type: Using default expand');
+                this.webApp.expand();
+            }
+        } catch (error) {
+            console.warn('Failed to set optimal viewport mode:', error);
+            // Fallback to basic expand
+            this.webApp.expand();
+        }
+    }
+
     // Utility Methods
     close() {
         if (this.isInitialized) {
@@ -172,6 +240,19 @@ class TelegramWebApp {
     expand() {
         if (this.isInitialized) {
             this.webApp.expand();
+        }
+    }
+
+    // Request specific viewport modes
+    requestFullscreen() {
+        if (this.isInitialized && this.webApp.requestFullscreen) {
+            this.webApp.requestFullscreen();
+        }
+    }
+
+    requestFullsize() {
+        if (this.isInitialized && this.webApp.requestFullsize) {
+            this.webApp.requestFullsize();
         }
     }
 
