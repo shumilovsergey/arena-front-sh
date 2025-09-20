@@ -122,11 +122,24 @@
             background: linear-gradient(145deg, #5a4420, #463714);
         }
 
-        .filter-section {
+        .search-filter-section {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-end;
             margin: 15px 0;
-            text-align: center;
+            flex-wrap: wrap;
         }
 
+        .search-container,
+        .filter-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 200px;
+        }
+
+        .search-label,
         .filter-label {
             display: block;
             margin-bottom: 8px;
@@ -136,6 +149,7 @@
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
         }
 
+        .search-input,
         .class-filter {
             background: rgba(15, 20, 25, 0.9);
             border: 2px solid #785a28;
@@ -144,21 +158,36 @@
             color: #f0e6d2;
             font-size: 14px;
             font-weight: bold;
-            cursor: pointer;
-            min-width: 200px;
-            text-align: center;
             outline: none;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            box-sizing: border-box;
         }
 
+        .search-input {
+            text-align: left;
+        }
+
+        .class-filter {
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .search-input:hover,
         .class-filter:hover {
             border-color: #c8aa6e;
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
         }
 
+        .search-input:focus,
         .class-filter:focus {
             border-color: #c8aa6e;
             box-shadow: 0 0 10px rgba(200, 170, 110, 0.5);
+        }
+
+        .search-input::placeholder {
+            color: #666;
+            opacity: 0.8;
         }
 
         .class-filter option {
@@ -285,6 +314,17 @@
                 gap: 8px;
             }
 
+            .search-filter-section {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .search-container,
+            .filter-container {
+                min-width: auto;
+                width: 100%;
+            }
+
             .controls {
                 flex-direction: column;
                 align-items: stretch;
@@ -346,12 +386,25 @@
                     </div>
                 </div>
 
-                <div class="filter-section">
-                    <label for="class-filter" class="filter-label">Filter by Class:</label>
-                    <select id="class-filter" class="class-filter" onchange="filterByClass()">
-                        <option value="all">All Champions</option>
-                        <!-- Options will be populated dynamically -->
-                    </select>
+                <div class="search-filter-section">
+                    <div class="search-container">
+                        <label for="search-input" class="search-label">Search:</label>
+                        <input
+                            type="text"
+                            id="search-input"
+                            class="search-input"
+                            placeholder="Champion name..."
+                            oninput="searchChampions()"
+                        >
+                    </div>
+
+                    <div class="filter-container">
+                        <label for="class-filter" class="filter-label">Filter by Class:</label>
+                        <select id="class-filter" class="class-filter" onchange="filterByClass()">
+                            <option value="all">All Champions</option>
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
                 </div>
 
                 <div class="controls">
@@ -383,6 +436,7 @@
                 this.originalCompleted = new Set();
                 this.currentVersion = null;
                 this.currentFilter = 'all';
+                this.currentSearch = '';
                 this.allClasses = new Set();
 
                 this.init();
@@ -520,13 +574,24 @@
             }
 
             getFilteredChampions() {
-                if (this.currentFilter === 'all') {
-                    return this.champions;
+                let filteredChampions = this.champions;
+
+                // Apply class filter
+                if (this.currentFilter !== 'all') {
+                    filteredChampions = filteredChampions.filter(champion =>
+                        champion.tags.includes(this.currentFilter)
+                    );
                 }
 
-                return this.champions.filter(champion =>
-                    champion.tags.includes(this.currentFilter)
-                );
+                // Apply search filter
+                if (this.currentSearch.trim() !== '') {
+                    const searchTerm = this.currentSearch.toLowerCase().trim();
+                    filteredChampions = filteredChampions.filter(champion =>
+                        champion.name.toLowerCase().includes(searchTerm)
+                    );
+                }
+
+                return filteredChampions;
             }
 
             renderChampions() {
@@ -559,6 +624,12 @@
 
             filterByClass(selectedClass) {
                 this.currentFilter = selectedClass;
+                this.renderChampions();
+                this.updateStats();
+            }
+
+            searchChampions(searchTerm) {
+                this.currentSearch = searchTerm || '';
                 this.renderChampions();
                 this.updateStats();
             }
@@ -679,6 +750,11 @@
         function filterByClass() {
             const filterSelect = document.getElementById('class-filter');
             arenaTracker.filterByClass(filterSelect.value);
+        }
+
+        function searchChampions() {
+            const searchInput = document.getElementById('search-input');
+            arenaTracker.searchChampions(searchInput.value);
         }
 
         // Initialize the application

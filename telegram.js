@@ -31,6 +31,9 @@ class TelegramWebApp {
             console.log('Telegram WebApp initialized successfully');
             console.log('User:', this.user);
             console.log('Platform:', this.getPlatform());
+            console.log('Version:', this.getVersion());
+            console.log('Fullscreen Available:', this.isFullscreenAvailable());
+            console.log('Current Expanded State:', this.isExpanded());
             console.log('Viewport mode set based on device type');
         } else {
             console.warn('Telegram WebApp not available - running in browser mode');
@@ -200,27 +203,42 @@ class TelegramWebApp {
         if (!this.isInitialized) return;
 
         try {
-            if (this.isMobileDevice()) {
-                // Mobile devices: Use fullscreen mode for immersive experience
-                console.log('Mobile device detected: Setting fullscreen mode');
-                if (this.webApp.requestFullscreen) {
+            const platform = this.getPlatform();
+            const isDesktop = platform === 'web' || platform === 'macos' || platform === 'windows' || platform === 'linux';
+            const isMobile = platform === 'android' || platform === 'ios' || platform === 'mobile';
+
+            console.log('Platform detected:', platform);
+            console.log('Is Desktop:', isDesktop);
+            console.log('Is Mobile:', isMobile);
+
+            if (isMobile) {
+                // Mobile devices: Try fullscreen mode for immersive experience
+                console.log('Mobile device detected: Attempting fullscreen mode');
+
+                if (this.webApp.isVersionAtLeast && this.webApp.isVersionAtLeast('8.0')) {
+                    console.log('Telegram version 8.0+: Using requestFullscreen()');
                     this.webApp.requestFullscreen();
+
+                    // Add event listeners for fullscreen state changes
+                    this.webApp.onEvent('fullscreenChanged', () => {
+                        console.log('Fullscreen state changed:', this.webApp.isFullscreen);
+                    });
+
+                    this.webApp.onEvent('fullscreenFailed', () => {
+                        console.log('Fullscreen failed, falling back to expand');
+                        this.webApp.expand();
+                    });
                 } else {
-                    // Fallback to expand for older versions
+                    console.log('Older Telegram version: Using expand() fallback');
                     this.webApp.expand();
                 }
-            } else if (this.isDesktopDevice()) {
-                // Desktop devices: Use fullsize mode for better window management
-                console.log('Desktop device detected: Setting fullsize mode');
-                if (this.webApp.requestFullsize) {
-                    this.webApp.requestFullsize();
-                } else {
-                    // Fallback to expand for older versions
-                    this.webApp.expand();
-                }
+            } else if (isDesktop) {
+                // Desktop devices: Use expand for fullsize window behavior
+                console.log('Desktop device detected: Using expand() for fullsize mode');
+                this.webApp.expand();
             } else {
-                // Unknown device: Default expand behavior
-                console.log('Unknown device type: Using default expand');
+                // Unknown platform: Default expand behavior
+                console.log('Unknown platform type:', platform, '- Using default expand');
                 this.webApp.expand();
             }
         } catch (error) {
@@ -246,14 +264,32 @@ class TelegramWebApp {
     // Request specific viewport modes
     requestFullscreen() {
         if (this.isInitialized && this.webApp.requestFullscreen) {
+            console.log('Manually requesting fullscreen mode');
             this.webApp.requestFullscreen();
+        } else {
+            console.log('requestFullscreen not available, using expand fallback');
+            this.webApp.expand();
         }
     }
 
     requestFullsize() {
-        if (this.isInitialized && this.webApp.requestFullsize) {
-            this.webApp.requestFullsize();
+        if (this.isInitialized) {
+            console.log('Manually requesting fullsize mode (using expand)');
+            this.webApp.expand();
         }
+    }
+
+    // Check if fullscreen is available
+    isFullscreenAvailable() {
+        return this.isInitialized &&
+               this.webApp.isVersionAtLeast &&
+               this.webApp.isVersionAtLeast('8.0') &&
+               typeof this.webApp.requestFullscreen === 'function';
+    }
+
+    // Get current fullscreen state
+    isFullscreen() {
+        return this.isInitialized && this.webApp.isFullscreen;
     }
 
     // Device Info
