@@ -15,7 +15,7 @@ const API_ENDPOINTS = {
     UPDATE_DATA: API_BASE_URL + ROUTE_PREFIX + '/up_data'
 };
 
-// App Configuration
+// App Configuration /
 const APP_CONFIG = {
     // App Info
     APP_NAME: 'Arena LoL',
