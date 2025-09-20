@@ -1,233 +1,209 @@
-/**
- * Telegram Web App initialization and utilities
- * This file handles all Telegram-specific functionality
- */
+// Telegram WebApp Integration
+// Based on official Telegram WebApp documentation
 
-class TelegramApp {
+class TelegramWebApp {
     constructor() {
-        this.webApp = window.Telegram?.WebApp;
-        this.user = null;
+        this.webApp = null;
         this.initData = null;
-
-        // Better detection: check if we have actual Telegram data, not just the WebApp object
-        this.isInTelegram = !!(this.webApp && this.webApp.initData);
-
-        console.log('🔍 Telegram detection:', {
-            hasWebApp: !!this.webApp,
-            hasInitData: !!(this.webApp && this.webApp.initData),
-            initDataLength: this.webApp?.initData?.length || 0,
-            isInTelegram: this.isInTelegram,
-            enableDevMode: AppConfig?.app?.enableDevMode
-        });
+        this.user = null;
+        this.isInitialized = false;
 
         this.init();
     }
 
     init() {
-        if (!this.isInTelegram) {
-            console.warn('Not running in Telegram WebApp environment');
-            return;
+        if (window.Telegram && window.Telegram.WebApp) {
+            this.webApp = window.Telegram.WebApp;
+            this.initData = this.webApp.initData;
+            this.user = this.webApp.initDataUnsafe?.user;
+
+            // Initialize WebApp
+            this.webApp.ready();
+
+            // Auto-expand if enabled in config
+            if (window.CONFIG?.APP_CONFIG?.ENABLE_AUTO_EXPAND) {
+                this.webApp.expand();
+            }
+
+            this.isInitialized = true;
+
+            // Setup theme
+            this.setupTheme();
+
+            console.log('Telegram WebApp initialized successfully');
+            console.log('User:', this.user);
+        } else {
+            console.warn('Telegram WebApp not available - running in browser mode');
+        }
+    }
+
+    // Theme Management
+    setupTheme() {
+        if (!this.isInitialized || !window.CONFIG?.TELEGRAM_CONFIG?.ENABLE_THEME_PARAMS) return;
+
+        const themeParams = this.webApp.themeParams;
+        if (themeParams) {
+            // Apply Telegram theme colors to CSS custom properties
+            document.documentElement.style.setProperty('--tg-theme-bg-color', themeParams.bg_color || '#ffffff');
+            document.documentElement.style.setProperty('--tg-theme-text-color', themeParams.text_color || '#000000');
+            document.documentElement.style.setProperty('--tg-theme-hint-color', themeParams.hint_color || '#999999');
+            document.documentElement.style.setProperty('--tg-theme-link-color', themeParams.link_color || '#2481cc');
+            document.documentElement.style.setProperty('--tg-theme-button-color', themeParams.button_color || '#2481cc');
+            document.documentElement.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color || '#ffffff');
+            document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', themeParams.secondary_bg_color || '#f1f1f1');
+        }
+    }
+
+    // Authentication
+    getAuthHeaders() {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        if (this.initData) {
+            headers['X-Telegram-Init-Data'] = this.initData;
         }
 
-        // Initialize Telegram WebApp
-        this.webApp.ready();
-        this.webApp.expand();
-
-        // Get user data and init data
-        this.user = this.webApp.initDataUnsafe?.user || null;
-        this.initData = this.webApp.initData || null;
-
-        // Apply Telegram theme
-        this.applyTheme();
-
-        // Set up main button if needed
-        this.setupMainButton();
-
-        // Handle back button
-        this.setupBackButton();
-
-        console.log('Telegram WebApp initialized', {
-            user: this.user,
-            version: this.webApp.version,
-            platform: this.webApp.platform
-        });
+        return headers;
     }
 
-    applyTheme() {
-        if (!this.webApp) return;
-
-        const theme = this.webApp.themeParams;
-        const root = document.documentElement;
-
-        // Apply Telegram theme colors
-        if (theme.bg_color) root.style.setProperty('--tg-theme-bg-color', theme.bg_color);
-        if (theme.text_color) root.style.setProperty('--tg-theme-text-color', theme.text_color);
-        if (theme.hint_color) root.style.setProperty('--tg-theme-hint-color', theme.hint_color);
-        if (theme.link_color) root.style.setProperty('--tg-theme-link-color', theme.link_color);
-        if (theme.button_color) root.style.setProperty('--tg-theme-button-color', theme.button_color);
-        if (theme.button_text_color) root.style.setProperty('--tg-theme-button-text-color', theme.button_text_color);
-        if (theme.secondary_bg_color) root.style.setProperty('--tg-theme-secondary-bg-color', theme.secondary_bg_color);
+    // User Information
+    getUserInfo() {
+        return this.user;
     }
 
-    setupMainButton() {
-        if (!this.webApp) return;
-
-        this.webApp.MainButton.setText('Continue');
-        this.webApp.MainButton.hide();
+    getInitData() {
+        return this.initData;
     }
 
-    setupBackButton() {
-        if (!this.webApp) return;
-
-        this.webApp.BackButton.onClick(() => {
-            // Handle back navigation
-            window.history.back();
-        });
+    isReady() {
+        return this.isInitialized;
     }
 
-    showMainButton(text = 'Continue', onClick = null) {
-        if (!this.webApp) return;
+    // Haptic Feedback
+    hapticFeedback(type = 'light') {
+        if (!this.isInitialized || !window.CONFIG?.APP_CONFIG?.ENABLE_HAPTIC_FEEDBACK) return;
+
+        if (this.webApp.HapticFeedback) {
+            const hapticTypes = window.CONFIG.TELEGRAM_CONFIG.HAPTIC_TYPES;
+
+            switch (type) {
+                case hapticTypes.SUCCESS:
+                case hapticTypes.ERROR:
+                case hapticTypes.WARNING:
+                    this.webApp.HapticFeedback.notificationOccurred(type);
+                    break;
+                case hapticTypes.LIGHT:
+                case hapticTypes.MEDIUM:
+                case hapticTypes.HEAVY:
+                    this.webApp.HapticFeedback.impactOccurred(type);
+                    break;
+                default:
+                    this.webApp.HapticFeedback.impactOccurred('light');
+            }
+        }
+    }
+
+    // Main Button Management
+    showMainButton(text, onClick) {
+        if (!this.isInitialized) return;
 
         this.webApp.MainButton.setText(text);
+        this.webApp.MainButton.onClick(onClick);
         this.webApp.MainButton.show();
-
-        if (onClick) {
-            this.webApp.MainButton.onClick(onClick);
-        }
     }
 
     hideMainButton() {
-        if (!this.webApp) return;
+        if (!this.isInitialized) return;
+
         this.webApp.MainButton.hide();
     }
 
-    showBackButton() {
-        if (!this.webApp) return;
+    // Back Button Management
+    showBackButton(onClick) {
+        if (!this.isInitialized) return;
+
+        this.webApp.BackButton.onClick(onClick);
         this.webApp.BackButton.show();
     }
 
     hideBackButton() {
-        if (!this.webApp) return;
+        if (!this.isInitialized) return;
+
         this.webApp.BackButton.hide();
     }
 
+    // Popup Management
+    showAlert(message) {
+        if (!this.isInitialized) {
+            alert(message);
+            return;
+        }
+
+        this.webApp.showAlert(message);
+    }
+
+    showConfirm(message, callback) {
+        if (!this.isInitialized) {
+            const result = confirm(message);
+            callback(result);
+            return;
+        }
+
+        this.webApp.showConfirm(message, callback);
+    }
+
+    showPopup(params) {
+        if (!this.isInitialized) {
+            alert(params.message || 'Popup not supported in browser mode');
+            return;
+        }
+
+        this.webApp.showPopup(params);
+    }
+
+    // Utility Methods
     close() {
-        if (!this.webApp) return;
-        this.webApp.close();
-    }
-
-    hapticFeedback(type = 'impact', style = 'light') {
-        if (!this.webApp?.HapticFeedback) return;
-
-        switch (type) {
-            case 'impact':
-                this.webApp.HapticFeedback.impactOccurred(style); // light, medium, heavy
-                break;
-            case 'notification':
-                this.webApp.HapticFeedback.notificationOccurred(style); // error, success, warning
-                break;
-            case 'selection':
-                this.webApp.HapticFeedback.selectionChanged();
-                break;
+        if (this.isInitialized) {
+            this.webApp.close();
         }
     }
 
-    openLink(url, options = {}) {
-        if (!this.webApp) {
-            window.open(url, '_blank');
-            return;
+    expand() {
+        if (this.isInitialized) {
+            this.webApp.expand();
         }
-
-        this.webApp.openLink(url, options);
     }
 
-    shareToStory(mediaUrl, options = {}) {
-        if (!this.webApp?.shareToStory) {
-            console.warn('Share to story not supported');
-            return;
-        }
-
-        this.webApp.shareToStory(mediaUrl, options);
-    }
-
-    requestContact() {
-        return new Promise((resolve, reject) => {
-            if (!this.webApp?.requestContact) {
-                reject(new Error('Contact request not supported'));
-                return;
-            }
-
-            this.webApp.requestContact((result) => {
-                if (result) {
-                    resolve(result);
-                } else {
-                    reject(new Error('Contact request cancelled'));
-                }
-            });
-        });
-    }
-
-    // Validation helpers
-    validateInitData() {
-        if (!this.initData) {
-            throw new Error('No init data available');
-        }
-        return this.initData;
-    }
-
-    getAuthHeaders() {
-        console.log('🔍 getAuthHeaders called:', {
-            isInTelegram: this.isInTelegram,
-            enableDevMode: AppConfig?.app?.enableDevMode,
-            devAuthHeader: AppConfig?.app?.devAuthHeader
-        });
-
-        // If not in Telegram and dev mode is enabled, use dev auth header
-        if (!this.isInTelegram && AppConfig.app.enableDevMode) {
-            const headers = {
-                'X-Dev-Auth': AppConfig.app.devAuthHeader || 'dev-user-bypass',
-                'Content-Type': 'application/json'
-            };
-            console.log('🔧 Using dev headers:', headers);
-            return headers;
-        }
-
-        // Standard Telegram authentication
-        const headers = {
-            'X-Telegram-Init-Data': this.initData || '',
-            'Content-Type': 'application/json'
-        };
-        console.log('🔧 Using Telegram headers:', headers);
-        return headers;
-    }
-
-    // User information getters
-    getUserId() {
-        return this.user?.id || null;
-    }
-
-    getUserData() {
-        return {
-            id: this.user?.id,
-            first_name: this.user?.first_name,
-            last_name: this.user?.last_name,
-            username: this.user?.username,
-            language_code: this.user?.language_code,
-            photo_url: this.user?.photo_url
-        };
+    // Device Info
+    getVersion() {
+        return this.isInitialized ? this.webApp.version : null;
     }
 
     getPlatform() {
-        return this.webApp?.platform || 'unknown';
+        return this.isInitialized ? this.webApp.platform : 'unknown';
     }
 
-    getVersion() {
-        return this.webApp?.version || 'unknown';
+    getColorScheme() {
+        return this.isInitialized ? this.webApp.colorScheme : 'light';
+    }
+
+    // Viewport Info
+    getViewportHeight() {
+        return this.isInitialized ? this.webApp.viewportHeight : window.innerHeight;
+    }
+
+    getViewportStableHeight() {
+        return this.isInitialized ? this.webApp.viewportStableHeight : window.innerHeight;
+    }
+
+    isExpanded() {
+        return this.isInitialized ? this.webApp.isExpanded : false;
     }
 }
 
-// Initialize Telegram app
-const tgApp = new TelegramApp();
+// Initialize Telegram WebApp
+const telegramApp = new TelegramWebApp();
 
-// Export for use in other files
-window.tgApp = tgApp;
+// Export for global use
+window.TelegramApp = telegramApp;
