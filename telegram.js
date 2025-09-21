@@ -20,10 +20,12 @@ class TelegramWebApp {
             // Initialize WebApp
             this.webApp.ready();
 
+            this.isInitialized = true;
+
             // Set viewport mode based on device type
             this.setOptimalViewportMode();
 
-            this.isInitialized = true;
+            
 
             // Setup theme
             this.setupTheme();
@@ -200,24 +202,76 @@ class TelegramWebApp {
     }
 
     setOptimalViewportMode() {
-        if (!this.isInitialized) return;
+    const tg = this.webApp;
+    if (!tg) return;
+
+    const platform = tg.platform;
+    const isDesktop = ['web', 'macos', 'windows', 'linux'].includes(platform);
+    const isMobile  = ['android', 'ios', 'mobile'].includes(platform);
+
+    console.log('Launch mode selection:', {
+        platform,
+        version: tg.version,
+        supportsFullscreen: !!(tg.isVersionAtLeast?.('8.0') && typeof tg.requestFullscreen === 'function'),
+        isDesktop,
+        isMobile
+    });
+
+    if (isDesktop) {
+        console.log('Desktop: using expand() (fullsize)');
+        tg.expand();
+        return;
+    }
+
+    const canFullscreen = isMobile && tg.isVersionAtLeast?.('8.0') && typeof tg.requestFullscreen === 'function';
+    if (canFullscreen) {
+        console.log('Mobile: attempting requestFullscreen()');
+
+        let fellBack = false;
+        const fallback = () => {
+        if (fellBack) return;
+        fellBack = true;
+        console.log('Falling back to expand()');
+        tg.expand();
+        tg.offEvent?.('fullscreenFailed', onFail);
+        tg.offEvent?.('fullscreenChanged', onChange);
+        };
+
+        const onFail = () => {
+        console.log('fullscreenFailed event received');
+        fallback();
+        };
+
+        const onChange = () => {
+        console.log('fullscreenChanged, isFullscreen =', tg.isFullscreen);
+        };
+
+        tg.onEvent?.('fullscreenFailed', onFail);
+        tg.onEvent?.('fullscreenChanged', onChange);
 
         try {
-            const platform = this.getPlatform();
-            console.log('Platform detected:', platform);
-            console.log('Telegram version:', this.getVersion());
-            console.log('Forcing Fullsize mode for all devices');
-
-            // Force Fullsize mode for ALL devices
-            this.webApp.expand();
-            console.log('Applied expand() for Fullsize mode');
-
-        } catch (error) {
-            console.warn('Failed to set viewport mode:', error);
-            // Fallback to basic expand
-            this.webApp.expand();
+        tg.requestFullscreen();
+        } catch (e) {
+        console.warn('requestFullscreen threw, falling back:', e);
+        fallback();
+        return;
         }
+
+        // Safety timeout in case no events fire
+        setTimeout(() => {
+        if (!tg.isFullscreen) {
+            console.log('Fullscreen timeout -> expand()');
+            fallback();
+        }
+        }, 1000);
+
+        return;
     }
+
+    console.log('Unknown/unsupported platform or version: using expand()');
+    tg.expand();
+    }
+
 
 
     // Utility Methods
@@ -235,7 +289,7 @@ class TelegramWebApp {
 
     // Request specific viewport modes
     requestFullscreen() {
-        if (this.isInitialized && this.webApp.requestFullscreen) {
+        if (this.isInitialized && this.webApp.isVersionAtLeast?.('8.0') && typeof this.webApp.requestFullscreen === 'function') {
             console.log('Manually requesting fullscreen mode');
             this.webApp.requestFullscreen();
         } else {
