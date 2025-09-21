@@ -127,6 +127,26 @@
             background: linear-gradient(145deg, #5a4420, #463714);
         }
 
+        .button.subtle {
+            background: rgba(30, 35, 40, 0.6);
+            color: #666;
+            border: 1px solid rgba(120, 90, 40, 0.3);
+            font-size: 12px;
+            padding: 8px 16px;
+            min-width: 80px;
+            opacity: 0.7;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        /* .button.subtle:hover {
+            background: rgba(30, 35, 40, 0.8);
+            color: #888;
+            border-color: rgba(120, 90, 40, 0.5);
+            opacity: 0.9;
+            transform: none;
+        } */
+
         .search-filter-section {
             display: flex;
             gap: 20px;
@@ -420,6 +440,7 @@
                 <div class="controls">
                     <button id="edit-btn" class="button" onclick="toggleEditMode()">Edit</button>
                     <button id="save-btn" class="button" onclick="saveProgress()" style="display: none;">Save</button>
+                    <button class="button subtle" onclick="window.open('https://sh-development.ru', '_blank')">sh-development.ru</button>
                 </div>
             </div>
 
