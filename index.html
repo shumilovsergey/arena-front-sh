@@ -27,8 +27,8 @@
             text-align: center;
             margin-bottom: 20px;
             background: rgba(30, 35, 40, 0.8);
-            padding: 20px;
-            border-radius: 8px;
+            padding: 5px 20px 20px 20px;
+            border-radius: 20px;
             border: 2px solid #785a28;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(10px);
@@ -37,7 +37,7 @@
         .header h1 {
             margin: 0 0 15px 0;
             color: #f0e6d2;
-            font-size: 28px;
+            font-size: 20px;
             font-weight: bold;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
             text-transform: uppercase;
@@ -309,6 +309,11 @@
         }
 
         @media (max-width: 768px) {
+            .header {
+                border-radius: 25px;
+                margin: 0 5px 20px 5px;
+            }
+
             .champions-grid {
                 grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
                 gap: 8px;
@@ -364,7 +369,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏆 Arena Challenge Tracker</h1>
+            <h1>TRACKER</h1>
 
             <div id="loading" class="loading">
                 Loading your progress...
