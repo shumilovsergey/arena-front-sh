@@ -14,7 +14,10 @@
             background: linear-gradient(135deg, #0a1428 0%, #1e2734 50%, #0f1b2e 100%);
             color: #c9aa71;
             margin: 0;
-            padding: 10px;
+            padding-top: 10px;
+            padding-left: 9px;
+            padding-right: 9px;
+            padding-bottom: 10px;
             min-height: 100vh;
         }
 
@@ -43,6 +46,7 @@
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
             text-transform: uppercase;
             letter-spacing: 2px;
+            padding-top: 10px;
         }
 
         .progress-stats {
@@ -383,7 +387,7 @@
                         <div class="stat-label">Completed</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number" id="remaining-count">169</div>
+                        <div class="stat-number" id="remaining-count">0</div>
                         <div class="stat-label">Remaining</div>
                     </div>
                     <div class="stat-item">
@@ -662,25 +666,15 @@
             }
 
             updateStats() {
-                const filteredChampions = this.getFilteredChampions();
-                const filteredCompleted = filteredChampions.filter(champion =>
-                    this.completedChampions.has(champion.id)
-                ).length;
-
                 const totalCompleted = this.completedChampions.size;
                 const totalChampions = this.champions.length;
+                const totalRemaining = totalChampions - totalCompleted;
                 const totalPercentage = totalChampions > 0 ? Math.round((totalCompleted / totalChampions) * 100) : 0;
 
-                // Show filtered stats when filter is active
-                if (this.currentFilter === 'all') {
-                    document.getElementById('completed-count').textContent = totalCompleted;
-                    document.getElementById('remaining-count').textContent = totalChampions - totalCompleted;
-                    document.getElementById('progress-percentage').textContent = totalPercentage + '%';
-                } else {
-                    document.getElementById('completed-count').textContent = `${totalCompleted}`;
-                    document.getElementById('remaining-count').textContent = filteredChampions.length - filteredCompleted;
-                    document.getElementById('progress-percentage').textContent = totalPercentage + '%';
-                }
+                // Always show total stats regardless of filter
+                document.getElementById('completed-count').textContent = totalCompleted;
+                document.getElementById('remaining-count').textContent = totalRemaining;
+                document.getElementById('progress-percentage').textContent = totalPercentage + '%';
             }
 
             toggleEditMode() {
